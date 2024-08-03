@@ -50,7 +50,7 @@ const char LispLibrary[] PROGMEM = "";
 #ifdef __EMSCRIPTEN__      //  If building for WebAssembly...
 #include "./wasm.h"  //  For WebAssembly Interface
 // #else                      //  If building for BL602...
-// #include <bl_gpio.h>       //  For BL602 GPIO Hardware Abstraction Layer
+// #include <gpio.h>       //  For BL602 GPIO Hardware Abstraction Layer
 // #include "nimble_npl.h"    //  For NimBLE Porting Layer (mulitasking functions)
 #endif                     //  __EMSCRIPTEN__
 
@@ -3522,10 +3522,10 @@ object *fn_pinmode (object *args, object *env) {
   //  Configure the GPIO input or output (from BL602 GPIO HAL)
   int rc;
   switch(pm) {
-    case OUTPUT: rc = bl_gpio_enable_output(pin, 0, 0); assert(rc == 0); break;
-    case INPUT:  rc = bl_gpio_enable_input(pin, 0, 0);  assert(rc == 0); break;
-    case INPUT_PULLUP:   rc = bl_gpio_enable_input(pin, 1, 0); assert(rc == 0); break;
-    case INPUT_PULLDOWN: rc = bl_gpio_enable_input(pin, 0, 1); assert(rc == 0); break;
+    case OUTPUT: rc = gpio_enable_output(pin, 0, 0); assert(rc == 0); break;
+    case INPUT:  rc = gpio_enable_input(pin, 0, 0);  assert(rc == 0); break;
+    case INPUT_PULLUP:   rc = gpio_enable_input(pin, 1, 0); assert(rc == 0); break;
+    case INPUT_PULLDOWN: rc = gpio_enable_input(pin, 0, 1); assert(rc == 0); break;
     default: printf("Unknown pinMode %d\r\n", pm);
   }
   return nil;
@@ -3552,7 +3552,7 @@ object *fn_digitalwrite (object *args, object *env) {
   else { mode = (arg != nil) ? HIGH : LOW; }
 
   //  Set the GPIO output (from BL602 GPIO HAL)
-  int rc = bl_gpio_output_set(
+  int rc = gpio_output_set(
       pin,  //  GPIO pin number
       mode  //  0 for low, 1 for high
   );

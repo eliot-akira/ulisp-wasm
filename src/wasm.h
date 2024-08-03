@@ -3,9 +3,9 @@
 #define ULISP_WASM_H
 #include <stdint.h>
 
-int bl_gpio_enable_input(uint8_t pin, uint8_t pullup, uint8_t pulldown);
-int bl_gpio_enable_output(uint8_t pin, uint8_t pullup, uint8_t pulldown);
-int bl_gpio_output_set(uint8_t pin, uint8_t value);
+int gpio_enable_input(uint8_t pin, uint8_t pullup, uint8_t pulldown);
+int gpio_enable_output(uint8_t pin, uint8_t pullup, uint8_t pulldown);
+int gpio_output_set(uint8_t pin, uint8_t value);
 void time_delay(uint32_t ticks);
 
 //  1 tick is 1 millisecond

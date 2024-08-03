@@ -46,19 +46,19 @@ void yield_ulisp(void) {
 }
 
 /// Add a GPIO event to enable input (0 for to disable pullup/pulldown, 1 to enable pullup/pulldown)
-int bl_gpio_enable_input(uint8_t pin, uint8_t pullup, uint8_t pulldown) { 
+int gpio_enable_input(uint8_t pin, uint8_t pullup, uint8_t pulldown) { 
     //  TODO
     return 0; 
 }
 
 /// Add a GPIO event to enable output (0 for to disable pullup/pulldown, 1 to enable pullup/pulldown)
-int bl_gpio_enable_output(uint8_t pin, uint8_t pullup, uint8_t pulldown) { 
+int gpio_enable_output(uint8_t pin, uint8_t pullup, uint8_t pulldown) { 
     //  TODO
     return 0; 
 }
 
 /// Add a GPIO event to set output (0 for low, 1 for high)
-int bl_gpio_output_set(uint8_t pin, uint8_t value) {
+int gpio_output_set(uint8_t pin, uint8_t value) {
     //  How many chars in the Simulation Events buffer to keep
     int keep = 
         strlen(events)  //  Keep the existing events
