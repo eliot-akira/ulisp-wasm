@@ -21,25 +21,13 @@ const char LispLibrary[] = "";
 // #define vt100
 // #define extensions
 
-// From fork
-#define PROGMEM
-#define PSTR(s)   s
-#define TODO0(s)     { printf("TODO: " #s "\r\n"); return; }    //  With no return value
-#define TODO1(s, v)  { printf("TODO: " #s "\r\n"); return v; }  //  With return value
-
-#define LOW             0
-#define HIGH            1
-#define INPUT           2
-#define INPUT_PULLUP    3
-#define INPUT_PULLDOWN  4
-#define OUTPUT          5
-
 // Includes
 
 // #include "LispLibrary.h"
 #include <setjmp.h>
 #if defined(__EMSCRIPTEN__)
 #include <limits.h>
+#include <setjmp.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -47,16 +35,13 @@ const char LispLibrary[] = "";
 #include <math.h>
 #include <string.h>
 #include <assert.h>
-#include "ulisp.h"
-#include "wasm.h"
+#include <emscripten.h>
 #else
 #include <SPI.h>
 #include <Wire.h>
 #include <limits.h>
 #include <WiFi.h>
 #endif
-
-// #define putchar(c)   printf("%c", c)  //  putchar doesn't work on BL602
 
 #if defined(gfxsupport)
 #define COLOR_WHITE ST77XX_WHITE
@@ -86,11 +71,25 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define WORKSPACESIZE (9216-SDSIZE)     /* Cells (8*bytes) */
 // #define LITTLEFS
 // #include <LittleFS.h>
-#define analogWrite(x,y) dacWrite((x),(y))
+// #define analogWrite(x,y) dacWrite((x),(y))
 #define SDCARD_SS_PIN 13
 #define LED_BUILTIN 13
 
 #define EEPROMSIZE        4096              /* Bytes available for EEPROM */
+
+// From fork
+#define PROGMEM
+#define PSTR(s)   s
+#define TODO0(s)     { printf("TODO: " #s "\r\n"); return; }    //  With no return value
+#define TODO1(s, v)  { printf("TODO: " #s "\r\n"); return v; }  //  With return value
+// #define putchar(c)   printf("%c", c) // BL602 doesn't have putchar
+
+#define LOW             0
+#define HIGH            1
+#define INPUT           2
+#define INPUT_PULLUP    3
+#define INPUT_PULLDOWN  4
+#define OUTPUT          5
 
 // C Macros
 
@@ -283,8 +282,57 @@ bool colonp (symbol_t name);
 void pbuiltin (builtin_t name, pfun_t pfun);
 void plispstr (symbol_t name, pfun_t pfun);
 
+// WebAssembly interface
 #if defined(__EMSCRIPTEN__)
-void yield_ulisp(void);
+
+// Setup environment
+void setup();
+
+// Evaluate expression
+void evaluate(const char *line);
+
+// Yield to run background tasks
+void yield_loop(void);
+
+// void send_json() {
+//   printf("json:[\"digitalRead\", %d, \"result\"]\n", pin);
+// }
+
+double startTime = 0;
+
+double millis() {
+  if (startTime==0) startTime = EM_ASM_DOUBLE({
+    return performance.now();
+  });
+  return EM_ASM_DOUBLE({
+    return performance.now() - $0;
+  }, startTime);
+}
+
+double analogRead(int pin) {
+  return EM_ASM_DOUBLE({
+    return ulisp.call(UTF8ToString($0), $1);
+  }, "analogRead", pin);
+}
+
+void analogWrite(int pin, double value) {
+  EM_ASM({
+    ulisp.call(UTF8ToString($0), $1, $2);
+  }, "analogWrite", pin, value);
+}
+
+int digitalRead(int pin) {
+  return EM_ASM_INT({
+    return ulisp.call(UTF8ToString($0), $1);
+  }, "digitalRead", pin);
+}
+
+void digitalWrite(int pin, int mode) {
+  EM_ASM({
+    ulisp.call(UTF8ToString($0), $1, $2);
+  }, "digitalWrite", pin, mode);
+}
+
 #endif
 
 // Error handling
@@ -2790,7 +2838,7 @@ object *sp_setq (object *args, object *env) {
 object *sp_loop (object *args, object *env) {
   object *start = args;
   for (;;) {
-    yield_ulisp();
+    yield_loop();
     args = start;
     while (args != NULL) {
       object *result = eval(car(args),env);
@@ -5237,21 +5285,18 @@ object *fn_pinmode (object *args, object *env) {
 #endif // TODO
   return nil;
 }
-
 /*
   (digitalread pin)
   Reads the state of the specified Arduino pin number and returns t (high) or nil (low).
 */
 object *fn_digitalread (object *args, object *env) {
-  TODO1(fn_digitalread, nil);
-#ifdef TODO
+  // TODO1(fn_digitalread, nil);
   (void) env;
   int pin;
   object *arg = first(args);
   if (keywordp(arg)) pin = checkkeyword(arg);
   else pin = checkinteger(arg);
   if (digitalRead(pin) != 0) return tee; else return nil;
-#endif  //  TODO
 }
 
 /*
@@ -5259,8 +5304,6 @@ object *fn_digitalread (object *args, object *env) {
   Sets the state of the specified Arduino pin number.
 */
 object *fn_digitalwrite (object *args, object *env) {
-  TODO1(fn_digitalwrite, nil);
-#ifdef TODO
   (void) env;
   int pin;
   object *arg = first(args);
@@ -5273,7 +5316,6 @@ object *fn_digitalwrite (object *args, object *env) {
   else mode = (arg != nil) ? HIGH : LOW;
   digitalWrite(pin, mode);
   return arg;
-#endif  //  TODO
 }
 
 /*
@@ -5281,8 +5323,6 @@ object *fn_digitalwrite (object *args, object *env) {
   Reads the specified Arduino analogue pin number and returns the value.
 */
 object *fn_analogread (object *args, object *env) {
-  TODO1(fn_analogread, nil);
-#ifdef TODO
   (void) env;
   int pin;
   object *arg = first(args);
@@ -5292,7 +5332,6 @@ object *fn_analogread (object *args, object *env) {
     checkanalogread(pin);
   }
   return number(analogRead(pin));
-#endif  //  TODO
 }
 
 /*
@@ -5319,8 +5358,6 @@ object *fn_analogreadresolution (object *args, object *env) {
   Writes the value to the specified Arduino pin number.
 */
 object *fn_analogwrite (object *args, object *env) {
-  TODO1(fn_analogwrite, nil);
-#ifdef TODO
   (void) env;
   int pin;
   object *arg = first(args);
@@ -5330,7 +5367,6 @@ object *fn_analogwrite (object *args, object *env) {
   object *value = second(args);
   analogWrite(pin, checkinteger(value));
   return value;
-#endif  //  TODO
 }
 
 /*
@@ -5354,11 +5390,8 @@ object *fn_delay (object *args, object *env) {
   Returns the time in milliseconds that uLisp has been running.
 */
 object *fn_millis (object *args, object *env) {
-  TODO1(fn_millis, nil);
-#ifdef TODO
   (void) args, (void) env;
   return number(millis());
-#endif  //  TODO
 }
 
 /*
@@ -7407,7 +7440,7 @@ object *eval (object *form, object *env) {
   if (millis() - start > 4000) { delay(1); start = millis(); }
 #elif defined(__EMSCRIPTEN__)
   // Allow background tasks to run
-  yield_ulisp();
+  yield_loop();
 #endif
   // Enough space?
   if (Freespace <= WORKSPACESIZE>>4) gc(form, env);
@@ -8253,6 +8286,7 @@ void setup () {
   initsleep();
   initgfx();
   pfstring(PSTR("uLisp 4.6b "), pserial); pln(pserial);
+  millis(); // Start time
 }
 
 // Read/Evaluate/Print loop
@@ -8330,3 +8364,23 @@ void evaluate(const char *line) {
   input_len = strlen(line);
   loop();
 }
+
+/*
+  WebAssembly interface
+*/
+#if defined(__EMSCRIPTEN__)
+
+int ticks = 0;
+
+// Yield evaluation loop and allow background tasks to run.
+/// Called by eval() and sp_loop()
+void yield_loop(void) {
+  ticks++;
+  if (ticks > 1024) {
+    puts("Too many iterations, stopping the loop");
+    // extern jmp_buf *handler;
+    longjmp(*handler, 1);
+  }
+}
+
+#endif

@@ -1,11 +1,11 @@
-const element = document.getElementById('output')
+const $console = document.getElementById('console')
 const canvas = document.getElementById('canvas')
 
 const Module = (window.Module = {
   print: (function () {
-    if (!element) return
+    if (!$console) return
 
-    element.value = ''
+    $console.value = ''
     return (...args) => {
       const text = args.join(' ')
       // These replacements are necessary if you render to raw HTML
@@ -13,9 +13,23 @@ const Module = (window.Module = {
       //text = text.replace(/</g, "&lt;");
       //text = text.replace(/>/g, "&gt;");
       //text = text.replace('\n', '<br>', 'g');
-      console.log(text)
-      element.innerText += text + '\n'
-      element.scrollTop = element.scrollHeight // focus on bottom
+
+      const lines = text.split('\n')
+      for (const text of lines) {
+        if (text.startsWith('json:')) {
+          console.log(text)
+          try {
+            const value = JSON.parse(text.replace(/^json:/, ''))
+            console.log('Got value', value)
+          } catch(e) {
+            console.log(e)
+          }
+        } else if (text) {
+          console.log(text)
+          $console.innerText += text + '\n'
+          $console.scrollTop = $console.scrollHeight // focus on bottom  
+        }
+      }
     }
   })(),
   canvas: (() => {
@@ -58,24 +72,26 @@ const Module = (window.Module = {
     }
     // statusElement.innerHTML = text;
 
-    console.log('status', text)
+    if (text) {
+      console.log('uLisp', text)
+    }
   },
   totalDependencies: 0,
-  monitorRunDependencies: (left) => {
-    Module.totalDependencies = Math.max(Module.totalDependencies, left)
-    Module.setStatus(
-      left
-        ? 'Preparing... (' +
-            (Module.totalDependencies - left) +
-            '/' +
-            Module.totalDependencies +
-            ')'
-        : 'All downloads complete.'
-    )
-  },
+  // monitorRunDependencies: (left) => {
+  //   Module.totalDependencies = Math.max(Module.totalDependencies, left)
+  //   Module.setStatus(
+  //     left
+  //       ? 'Preparing... (' +
+  //           (Module.totalDependencies - left) +
+  //           '/' +
+  //           Module.totalDependencies +
+  //           ')'
+  //       : 'All downloads complete.'
+  //   )
+  // },
 })
 
-Module.setStatus('Downloading...')
+// Module.setStatus('Downloading...')
 window.onerror = (event) => {
   // TODO: do not warn on ok events like simulating an infinite loop or exitStatus
   Module.setStatus('Exception thrown, see JavaScript console')
@@ -87,22 +103,42 @@ window.onerror = (event) => {
 
 /// Wait for emscripten to be initialised
 Module.onRuntimeInitialized = function () {
-  Module.print('Init uLisp\n')
+  // Module.print('Init uLisp\n')
   Module._setup()
-  runScript()
+
+  const ulisp = window.ulisp =  {
+    run,
+    // Called from Module
+    call(command, ...args) {
+      console.log('ulisp.call', command, ...args)
+      switch(command) {
+        case 'analogRead':
+          return args[0] / 2
+        break
+        case 'analogWrite':
+        break
+        case 'digitalRead':
+          return args[0]
+        break
+        case 'digitalWrite':
+        break
+      }
+    }
+  }
+
+  run('(+ 1 (* 2 3))')
+
 }
 
-/// Run the script in the input box
-function runScript() {
-  //  Get the uLisp script
-  const scr = '(+ 1 (* 2 3))'
-  // var scr = document.getElementById("input").value;
+// var scr = document.getElementById("input").value;
+
+function run(code) {
 
   //  Create a pointer
-  const ptr = Module.allocate(Module.intArrayFromString(scr), Module.ALLOC_NORMAL)
+  const ptr = Module.allocate(Module.intArrayFromString(code), Module.ALLOC_NORMAL)
 
   //  Execute the uLisp script
-  Module.print('\nRun: ' + scr + '\n')
+  Module.print('\n> ' + code + '\n')
   Module._evaluate(ptr)
 
   //  Free the memory allocated
