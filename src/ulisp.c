@@ -22,7 +22,6 @@ const char LispLibrary[] = "";
 // #define extensions
 
 // From fork
-#define PGM_P     const char *
 #define PROGMEM
 #define PSTR(s)   s
 #define TODO0(s)     { printf("TODO: " #s "\r\n"); return; }    //  With no return value
@@ -244,24 +243,12 @@ static builtin_t untwist (symbol_t x) {
   return (x>>2 & 0x3FFFFFFF) | ((x & 0x03)<<30);
 }
 object *tf_progn (object *args, object *env);
-// object *eval (object *form, object *env);
 object *read (gfun_t gfun);
-// static  void repl (object *env);
 void printobject (object *form, pfun_t pfun);
-// char *lookupbuiltin (symbol_t name);
 intptr_t lookupfn (builtin_t name);
-// int builtin (char* n);
-// char *symbolname (symbol_t x);
-// object *apply (symbol_t name, object *function, object *args, object *env);
-// char *lookupsymbol (symbol_t name);
-// char *cstring (object *form, char *buffer, int buflen);
-// object *edit (object *fun);
 void pfl (pfun_t pfun);
 void pserial (char c);
-// void pfstring (PGM_P s, pfun_t pfun);
-// void pstring (const char *s, pfun_t pfun);
 static void pln (pfun_t pfun);
-// static int maxbuffer (char *buffer);
 uint8_t nthchar (object *string, int n);
 uint8_t getminmax (builtin_t name);
 int listlength (object *list);
@@ -270,7 +257,6 @@ void pint (int i, pfun_t pfun);
 int gserial ();
 void pintbase (uint32_t i, uint8_t power2, pfun_t pfun);
 int subwidthlist (object *form, int w);
-// void supersub (object *form, int lm, int super, pfun_t pfun);
 void prin1object (object *form, pfun_t pfun);
 void printstring (object *form, pfun_t pfun);
 void testescape ();
