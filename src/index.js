@@ -1,11 +1,13 @@
-var Module = (window.Module = {
+const element = document.getElementById('output')
+const canvas = document.getElementById('canvas')
+
+const Module = (window.Module = {
   print: (function () {
-    var element = document.getElementById('output')
     if (!element) return
 
     element.value = ''
     return (...args) => {
-      var text = args.join(' ')
+      const text = args.join(' ')
       // These replacements are necessary if you render to raw HTML
       //text = text.replace(/&/g, "&amp;");
       //text = text.replace(/</g, "&lt;");
@@ -17,20 +19,19 @@ var Module = (window.Module = {
     }
   })(),
   canvas: (() => {
-    var canvas = document.getElementById('canvas')
     if (!canvas) return
 
     // As a default initial behavior, pop up an alert when webgl context is lost. To make your
     // application robust, you may want to override this behavior before shipping!
     // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
-    canvas.addEventListener(
-      'webglcontextlost',
-      (e) => {
-        alert('WebGL context lost. You will need to reload the page.')
-        e.preventDefault()
-      },
-      false
-    )
+    // canvas.addEventListener(
+    //   'webglcontextlost',
+    //   (e) => {
+    //     alert('WebGL context lost. You will need to reload the page.')
+    //     e.preventDefault()
+    //   },
+    //   false
+    // )
 
     return canvas
   })(),
@@ -38,8 +39,8 @@ var Module = (window.Module = {
     if (!Module.setStatus.last)
       Module.setStatus.last = { time: Date.now(), text: '' }
     if (text === Module.setStatus.last.text) return
-    var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/)
-    var now = Date.now()
+    const m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/)
+    const now = Date.now()
     if (m && now - Module.setStatus.last.time < 30) return // if this is a progress update, skip it if too soon
     Module.setStatus.last.time = now
     Module.setStatus.last.text = text
@@ -86,21 +87,19 @@ window.onerror = (event) => {
 
 /// Wait for emscripten to be initialised
 Module.onRuntimeInitialized = function () {
-  //  Init uLisp interpreter
-  // Module.print("Init uLisp...\n");
+  Module.print('Init uLisp\n')
   Module._setup()
-
   runScript()
 }
 
 /// Run the script in the input box
 function runScript() {
   //  Get the uLisp script
-  var scr = '(+ 1 (* 2 3))'
+  const scr = '(+ 1 (* 2 3))'
   // var scr = document.getElementById("input").value;
 
   //  Create a pointer
-  var ptr = Module.allocate(Module.intArrayFromString(scr), Module.ALLOC_NORMAL)
+  const ptr = Module.allocate(Module.intArrayFromString(scr), Module.ALLOC_NORMAL)
 
   //  Execute the uLisp script
   Module.print('\nRun: ' + scr + '\n')
