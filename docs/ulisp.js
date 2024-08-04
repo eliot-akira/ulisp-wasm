@@ -17,24 +17,13 @@ var Module = typeof Module != 'undefined' ? Module : {};
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-// Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == 'object';
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
-// N.b. Electron.js environment is simultaneously a NODE-environment, but
-// also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
-var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+var ENVIRONMENT_IS_WEB = true;
+var ENVIRONMENT_IS_WORKER = false;
+var ENVIRONMENT_IS_NODE = false;
+var ENVIRONMENT_IS_SHELL = false;
 
 if (Module['ENVIRONMENT']) {
   throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-}
-
-if (ENVIRONMENT_IS_NODE) {
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-
 }
 
 // --pre-jses are emitted after the Module integration code, so that they can
@@ -64,81 +53,8 @@ function locateFile(path) {
 }
 
 // Hooks that are implemented differently in different runtime environments.
-var read_,
-    readAsync,
-    readBinary;
+var readAsync, readBinary;
 
-if (ENVIRONMENT_IS_NODE) {
-  if (typeof process == 'undefined' || !process.release || process.release.name !== 'node') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-
-  var nodeVersion = process.versions.node;
-  var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  var minVersion = 160000;
-  if (numericVersion < 160000) {
-    throw new Error('This emscripten-generated code requires node v16.0.0 (detected v' + nodeVersion + ')');
-  }
-
-  // These modules will usually be used on Node.js. Load them eagerly to avoid
-  // the complexity of lazy-loading.
-  var fs = require('fs');
-  var nodePath = require('path');
-
-  if (ENVIRONMENT_IS_WORKER) {
-    scriptDirectory = nodePath.dirname(scriptDirectory) + '/';
-  } else {
-    scriptDirectory = __dirname + '/';
-  }
-
-// include: node_shell_read.js
-read_ = (filename, binary) => {
-  // We need to re-wrap `file://` strings to URLs. Normalizing isn't
-  // necessary in that case, the path should already be absolute.
-  filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
-  return fs.readFileSync(filename, binary ? undefined : 'utf8');
-};
-
-readBinary = (filename) => {
-  var ret = read_(filename, true);
-  if (!ret.buffer) {
-    ret = new Uint8Array(ret);
-  }
-  assert(ret.buffer);
-  return ret;
-};
-
-readAsync = (filename, onload, onerror, binary = true) => {
-  // See the comment in the `read_` function.
-  filename = isFileURI(filename) ? new URL(filename) : nodePath.normalize(filename);
-  fs.readFile(filename, binary ? undefined : 'utf8', (err, data) => {
-    if (err) onerror(err);
-    else onload(binary ? data.buffer : data);
-  });
-};
-// end include: node_shell_read.js
-  if (!Module['thisProgram'] && process.argv.length > 1) {
-    thisProgram = process.argv[1].replace(/\\/g, '/');
-  }
-
-  arguments_ = process.argv.slice(2);
-
-  if (typeof module != 'undefined') {
-    module['exports'] = Module;
-  }
-
-  process.on('uncaughtException', (ex) => {
-    // suppress ExitStatus exceptions from showing an error
-    if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
-
-  quit_ = (status, toThrow) => {
-    process.exitCode = status;
-    throw toThrow;
-  };
-
-} else
 if (ENVIRONMENT_IS_SHELL) {
 
   if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
@@ -170,38 +86,16 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   {
 // include: web_or_worker_shell_read.js
-read_ = (url) => {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, false);
-    xhr.send(null);
-    return xhr.responseText;
-  }
-
-  if (ENVIRONMENT_IS_WORKER) {
-    readBinary = (url) => {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, false);
-      xhr.responseType = 'arraybuffer';
-      xhr.send(null);
-      return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
-    };
-  }
-
-  readAsync = (url, onload, onerror) => {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = () => {
-      if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-        onload(xhr.response);
-        return;
-      }
-      onerror();
-    };
-    xhr.onerror = onerror;
-    xhr.send(null);
-  }
-
+readAsync = (url) => {
+    assert(!isFileURI(url), "readAsync does not work with file:// URLs");
+    return fetch(url, { credentials: 'same-origin' })
+      .then((response) => {
+        if (response.ok) {
+          return response.arrayBuffer();
+        }
+        return Promise.reject(new Error(response.status + ' : ' + response.url));
+      })
+  };
 // end include: web_or_worker_shell_read.js
   }
 } else
@@ -236,13 +130,12 @@ assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memor
 assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed (modify read_ in JS)');
+assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
 assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
 legacyModuleProp('asm', 'wasmExports');
-legacyModuleProp('read', 'read_');
 legacyModuleProp('readAsync', 'readAsync');
 legacyModuleProp('readBinary', 'readBinary');
 legacyModuleProp('setWindowTitle', 'setWindowTitle');
@@ -255,6 +148,10 @@ var JSFILEFS = 'JSFILEFS is no longer included by default; build with -ljsfilefs
 var OPFS = 'OPFS is no longer included by default; build with -lopfs.js';
 
 var NODEFS = 'NODEFS is no longer included by default; build with -lnodefs.js';
+
+assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time.  Add `worker` to `-sENVIRONMENT` to enable.');
+
+assert(!ENVIRONMENT_IS_NODE, 'node environment detected but not enabled at build time.  Add `node` to `-sENVIRONMENT` to enable.');
 
 assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time.  Add `shell` to `-sENVIRONMENT` to enable.');
 
@@ -630,11 +527,15 @@ function createExportWrapper(name, nargs) {
 
 // include: runtime_exceptions.js
 // end include: runtime_exceptions.js
+function findWasmBinary() {
+    var f = 'ulisp.wasm';
+    if (!isDataURI(f)) {
+      return locateFile(f);
+    }
+    return f;
+}
+
 var wasmBinaryFile;
-  wasmBinaryFile = 'ulisp.wasm';
-  if (!isDataURI(wasmBinaryFile)) {
-    wasmBinaryFile = locateFile(wasmBinaryFile);
-  }
 
 function getBinarySync(file) {
   if (file == wasmBinaryFile && wasmBinary) {
@@ -647,29 +548,15 @@ function getBinarySync(file) {
 }
 
 function getBinaryPromise(binaryFile) {
-  // If we don't have the binary yet, try to load it asynchronously.
-  // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
-  // See https://github.com/github/fetch/pull/92#issuecomment-140665932
-  // Cordova or Electron apps are typically loaded from a file:// url.
-  // So use fetch if it is available and the url is not a file, otherwise fall back to XHR.
+  // If we don't have the binary yet, load it asynchronously using readAsync.
   if (!wasmBinary
-      && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER)) {
-    if (typeof fetch == 'function'
-      && !isFileURI(binaryFile)
-    ) {
-      return fetch(binaryFile, { credentials: 'same-origin' }).then((response) => {
-        if (!response['ok']) {
-          throw `failed to load wasm binary file at '${binaryFile}'`;
-        }
-        return response['arrayBuffer']();
-      }).catch(() => getBinarySync(binaryFile));
-    }
-    else if (readAsync) {
-      // fetch is not available or url is file => try XHR (readAsync uses XHR internally)
-      return new Promise((resolve, reject) => {
-        readAsync(binaryFile, (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))), reject)
-      });
-    }
+      ) {
+    // Fetch the binary using readAsync
+    return readAsync(binaryFile).then(
+      (response) => new Uint8Array(/** @type{!ArrayBuffer} */(response)),
+      // Fall back to getBinarySync if readAsync fails
+      () => getBinarySync(binaryFile)
+    );
   }
 
   // Otherwise, getBinarySync should be able to get it synchronously
@@ -694,15 +581,6 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
   if (!binary &&
       typeof WebAssembly.instantiateStreaming == 'function' &&
       !isDataURI(binaryFile) &&
-      // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
-      !isFileURI(binaryFile) &&
-      // Avoid instantiateStreaming() on Node.js environment for now, as while
-      // Node.js v18.1.0 implements it, it does not have a full fetch()
-      // implementation yet.
-      //
-      // Reference:
-      //   https://github.com/emscripten-core/emscripten/pull/16917
-      !ENVIRONMENT_IS_NODE &&
       typeof fetch == 'function') {
     return fetch(binaryFile, { credentials: 'same-origin' }).then((response) => {
       // Suppress closure warning here since the upstream definition for
@@ -793,6 +671,8 @@ function createWasm() {
         return false;
     }
   }
+
+  if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
 
   instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
   return {}; // no exports yet; we'll fill them in later
@@ -902,6 +782,16 @@ function dbg(...args) {
 }
 // end include: runtime_debug.js
 // === Body ===
+
+var ASM_CONSTS = {
+  118904: () => { return performance.now(); },  
+ 118934: ($0) => { return performance.now() - $0; },  
+ 118969: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 119014: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 119056: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 119101: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
+};
+
 // end include: preamble.js
 
 
@@ -977,12 +867,11 @@ function dbg(...args) {
       warnOnce.shown ||= {};
       if (!warnOnce.shown[text]) {
         warnOnce.shown[text] = 1;
-        if (ENVIRONMENT_IS_NODE) text = 'warning: ' + text;
         err(text);
       }
     };
 
-  var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : undefined;
+  var UTF8Decoder = typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined;
   
     /**
      * Given a pointer 'idx' to a null-terminated UTF8-encoded string in the given
@@ -1065,6 +954,49 @@ function dbg(...args) {
       throw Infinity;
     };
 
+  var readEmAsmArgsArray = [];
+  var readEmAsmArgs = (sigPtr, buf) => {
+      // Nobody should have mutated _readEmAsmArgsArray underneath us to be something else than an array.
+      assert(Array.isArray(readEmAsmArgsArray));
+      // The input buffer is allocated on the stack, so it must be stack-aligned.
+      assert(buf % 16 == 0);
+      readEmAsmArgsArray.length = 0;
+      var ch;
+      // Most arguments are i32s, so shift the buffer pointer so it is a plain
+      // index into HEAP32.
+      while (ch = HEAPU8[sigPtr++]) {
+        var chr = String.fromCharCode(ch);
+        var validChars = ['d', 'f', 'i', 'p'];
+        assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
+        // Floats are always passed as doubles, so all types except for 'i'
+        // are 8 bytes and require alignment.
+        var wide = (ch != 105);
+        wide &= (ch != 112);
+        buf += wide && (buf % 8) ? 4 : 0;
+        readEmAsmArgsArray.push(
+          // Special case for pointers under wasm64 or CAN_ADDRESS_2GB mode.
+          ch == 112 ? HEAPU32[((buf)>>2)] :
+          ch == 105 ?
+            HEAP32[((buf)>>2)] :
+            HEAPF64[((buf)>>3)]
+        );
+        buf += wide ? 8 : 4;
+      }
+      return readEmAsmArgsArray;
+    };
+  var runEmAsmFunction = (code, sigPtr, argbuf) => {
+      var args = readEmAsmArgs(sigPtr, argbuf);
+      assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+      return ASM_CONSTS[code](...args);
+    };
+  var _emscripten_asm_const_double = (code, sigPtr, argbuf) => {
+      return runEmAsmFunction(code, sigPtr, argbuf);
+    };
+
+  var _emscripten_asm_const_int = (code, sigPtr, argbuf) => {
+      return runEmAsmFunction(code, sigPtr, argbuf);
+    };
+
   var getHeapMax = () =>
       HEAPU8.length;
   
@@ -1124,6 +1056,7 @@ function dbg(...args) {
 
   var wasmTableMirror = [];
   
+  /** @type {WebAssembly.Table} */
   var wasmTable;
   var getWasmTableEntry = (funcPtr) => {
       var func = wasmTableMirror[funcPtr];
@@ -1345,6 +1278,10 @@ var wasmImports = {
   /** @export */
   _emscripten_throw_longjmp: __emscripten_throw_longjmp,
   /** @export */
+  emscripten_asm_const_double: _emscripten_asm_const_double,
+  /** @export */
+  emscripten_asm_const_int: _emscripten_asm_const_int,
+  /** @export */
   emscripten_resize_heap: _emscripten_resize_heap,
   /** @export */
   fd_write: _fd_write,
@@ -1363,9 +1300,8 @@ var wasmExports = createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
 var _setup = Module['_setup'] = createExportWrapper('setup', 0);
 var _evaluate = Module['_evaluate'] = createExportWrapper('evaluate', 1);
-var _clear_simulation_events = Module['_clear_simulation_events'] = createExportWrapper('clear_simulation_events', 0);
-var _get_simulation_events = Module['_get_simulation_events'] = createExportWrapper('get_simulation_events', 0);
 var _fflush = createExportWrapper('fflush', 1);
+var _strerror = createExportWrapper('strerror', 1);
 var _malloc = createExportWrapper('malloc', 1);
 var _free = Module['_free'] = createExportWrapper('free', 1);
 var _setThrew = createExportWrapper('setThrew', 2);
@@ -1462,6 +1398,7 @@ var missingLibrarySymbols = [
   'ydayFromDate',
   'arraySum',
   'addDays',
+  'strError',
   'inetPton4',
   'inetNtop4',
   'inetPton6',
@@ -1471,7 +1408,7 @@ var missingLibrarySymbols = [
   'initRandomFill',
   'randomFill',
   'emscriptenLog',
-  'readEmAsmArgs',
+  'runMainThreadEmAsm',
   'jstoi_q',
   'getExecutableName',
   'listenOnce',
@@ -1586,8 +1523,8 @@ var missingLibrarySymbols = [
   'FS_modeStringToFlags',
   'FS_getMode',
   'FS_stdin_getChar',
-  'FS_createDataFile',
   'FS_unlink',
+  'FS_createDataFile',
   'FS_mkdirTree',
   '_setNetworkCallback',
   'heapObjectForWebGLType',
@@ -1626,12 +1563,6 @@ var unexportedSymbols = [
   'addOnPostRun',
   'addRunDependency',
   'removeRunDependency',
-  'FS_createFolder',
-  'FS_createPath',
-  'FS_createLazyFile',
-  'FS_createLink',
-  'FS_createDevice',
-  'FS_readFile',
   'out',
   'err',
   'callMain',
@@ -1652,13 +1583,14 @@ var unexportedSymbols = [
   'MONTH_DAYS_REGULAR_CUMULATIVE',
   'MONTH_DAYS_LEAP_CUMULATIVE',
   'ERRNO_CODES',
-  'ERRNO_MESSAGES',
   'DNS',
   'Protocols',
   'Sockets',
   'timers',
   'warnOnce',
   'readEmAsmArgsArray',
+  'readEmAsmArgs',
+  'runEmAsmFunction',
   'jstoi_s',
   'wasmTable',
   'noExitRuntime',
@@ -1696,7 +1628,11 @@ var unexportedSymbols = [
   'SYSCALLS',
   'preloadPlugins',
   'FS_stdin_getChar_buffer',
+  'FS_createPath',
+  'FS_createDevice',
+  'FS_readFile',
   'FS',
+  'FS_createLazyFile',
   'MEMFS',
   'TTY',
   'PIPEFS',
@@ -1715,6 +1651,8 @@ var unexportedSymbols = [
   'ALLOC_STACK',
   'allocateUTF8',
   'allocateUTF8OnStack',
+  'print',
+  'printErr',
 ];
 unexportedSymbols.forEach(unexportedRuntimeSymbol);
 
@@ -1763,7 +1701,7 @@ function run() {
 
     initRuntime();
 
-    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+    Module['onRuntimeInitialized']?.();
 
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 
