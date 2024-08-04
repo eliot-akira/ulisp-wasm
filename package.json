@@ -1,0 +1,16 @@
+{
+  "name": "ulisp-wasm",
+  "type": "module",
+  "scripts": {
+    "start": "concurrently --raw npm:dev npm:dev:wasm",
+    "dev": "roll dev",
+    "build": "roll build && make",
+    "dev:wasm": "chokidar \"src/*.c\" \"src/*.h\" --initial --silent --command make"
+  },
+  "devDependencies": {
+    "@tangible/roller": "^2.0.5",
+    "chokidar-cli": "^3.0.0",
+    "concurrently": "^8.2.2",
+    "serve": "^14.2.3"
+  }
+}

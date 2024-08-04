@@ -40,8 +40,10 @@ void yield_ulisp(void) {
     if (strlen(events) + 100 >= sizeof(events)) {  //  Assume 100 bytes of leeway
         //  Cancel the loop or recursion by jumping to loop_ulisp() in src/ulisp.c
         puts("Too many iterations, stopping the loop");
-        extern jmp_buf exception;  //  Defined in src/ulisp.c
-        longjmp(exception, 1);
+        // extern jmp_buf exception;  //  Defined in src/ulisp.c
+        // longjmp(exception, 1);
+        extern jmp_buf *handler;
+        longjmp(*handler, 1);
     }
 }
 

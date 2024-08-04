@@ -3,6 +3,10 @@
 #define ULISP_WASM_H
 #include <stdint.h>
 
+void clear_simulation_events(void);
+const char *get_simulation_events(void);
+void yield_ulisp(void);
+
 int gpio_enable_input(uint8_t pin, uint8_t pullup, uint8_t pulldown);
 int gpio_enable_output(uint8_t pin, uint8_t pullup, uint8_t pulldown);
 int gpio_output_set(uint8_t pin, uint8_t value);

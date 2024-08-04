@@ -1349,16 +1349,20 @@ var wasmImports = {
   /** @export */
   fd_write: _fd_write,
   /** @export */
+  invoke_ii,
+  /** @export */
   invoke_iii,
   /** @export */
   invoke_v,
   /** @export */
-  invoke_vi
+  invoke_vi,
+  /** @export */
+  invoke_vii
 };
 var wasmExports = createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
-var _setup_ulisp = Module['_setup_ulisp'] = createExportWrapper('setup_ulisp', 0);
-var _execute_ulisp = Module['_execute_ulisp'] = createExportWrapper('execute_ulisp', 1);
+var _setup = Module['_setup'] = createExportWrapper('setup', 0);
+var _evaluate = Module['_evaluate'] = createExportWrapper('evaluate', 1);
 var _clear_simulation_events = Module['_clear_simulation_events'] = createExportWrapper('clear_simulation_events', 0);
 var _get_simulation_events = Module['_get_simulation_events'] = createExportWrapper('get_simulation_events', 0);
 var _fflush = createExportWrapper('fflush', 1);
@@ -1374,10 +1378,10 @@ var __emscripten_stack_alloc = (a0) => (__emscripten_stack_alloc = wasmExports['
 var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
 var dynCall_jiji = Module['dynCall_jiji'] = createExportWrapper('dynCall_jiji', 5);
 
-function invoke_v(index) {
+function invoke_vi(index,a1) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)();
+    getWasmTableEntry(index)(a1);
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;
@@ -1396,10 +1400,32 @@ function invoke_iii(index,a1,a2) {
   }
 }
 
-function invoke_vi(index,a1) {
+function invoke_vii(index,a1,a2) {
   var sp = stackSave();
   try {
-    getWasmTableEntry(index)(a1);
+    getWasmTableEntry(index)(a1,a2);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_ii(index,a1) {
+  var sp = stackSave();
+  try {
+    return getWasmTableEntry(index)(a1);
+  } catch(e) {
+    stackRestore(sp);
+    if (e !== e+0) throw e;
+    _setThrew(1, 0);
+  }
+}
+
+function invoke_v(index) {
+  var sp = stackSave();
+  try {
+    getWasmTableEntry(index)();
   } catch(e) {
     stackRestore(sp);
     if (e !== e+0) throw e;

@@ -1,1 +1,11 @@
 *.o
+
+node_modules
+.idea
+*.log
+
+# Support any package manager
+composer.lock
+package-lock.json
+yarn.lock
+bun.lockb

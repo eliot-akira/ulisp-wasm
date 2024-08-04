@@ -1,4 +1,4 @@
-# Build uLisp for WebAssembly: wasm/ulisp.html, ulisp.js, ulisp.wasm
+# Build uLisp for WebAssembly
 
 ###############################################################################
 # Typical Compile to WebAssembly with emscripten
@@ -7,7 +7,7 @@
 # WebAssembly C and C++ Source Files
 WASM_CSRCS := src/ulisp.c src/wasm.c
 
-# Build uLisp app: wasm/ulisp.html, ulisp.js, ulisp.wasm
+# Build uLisp app: ulisp.html, ulisp.js, ulisp.wasm
 TARGETS:= src/ulisp
 
 DEPS   := 
@@ -20,9 +20,9 @@ CPP    := em++
 # functions to be exported.
 CCFLAGS := \
 	-g \
-	-I include \
+	-I src \
 	-s WASM=1 \
-    -s "EXPORTED_FUNCTIONS=[ '_setup_ulisp', '_execute_ulisp', '_clear_simulation_events', '_get_simulation_events', '_free' ]" \
+	-s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_clear_simulation_events', '_get_simulation_events', '_free' ]" \
 	-s "EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'allocate', 'intArrayFromString', 'UTF8ToString', 'ALLOC_NORMAL' ]"
 
 LDFLAGS := 
@@ -38,12 +38,9 @@ OBJ    := \
 all: $(TARGETS)
 
 clean:
-	rm *.o || true
-	rm src/*.o || true
-	rm src/*.wasm || true
-	rm src/*.js || true
-	rm src/*.txt || true
-	rm -r $(HOME)/.emscripten_cache || true
+	rm -f src/*.o || true
+	rm -f src/*.wasm || true
+#	rm -r $(HOME)/.emscripten_cache || true
 
 $(OBJ): %.o : %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CCFLAGS)
