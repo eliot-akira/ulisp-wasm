@@ -3,3 +3,10 @@ body {
   margin: 0;
   padding: 1rem;
 }
+
+#console {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid #777;
+  border-radius: 8px;
+}

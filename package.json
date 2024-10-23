@@ -5,13 +5,18 @@
     "start": "concurrently --raw 'bun run dev' 'bun run dev:wasm'",
     "dev": "roll dev",
     "build": "roll build && bun run build:wasm",
-    "build:wasm": "emcc src/ulisp.c -sENVIRONMENT=web -g -I src -s WASM=1 -s \"EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free' ]\" -s \"EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'allocate', 'intArrayFromString', 'UTF8ToString', 'ALLOC_NORMAL' ]\" -o docs/ulisp.html",
+    "build:wasm": "emcc src/ulisp.c -O2 -sENVIRONMENT=web -sASYNCIFY -sMODULARIZE -sEXPORT_NAME=createUlispModule -g -I src -sWASM=1 -s \"EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free' ]\" -s \"EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]\" -o docs/ulisp.js",
     "dev:wasm": "chokidar \"src/*.c\" \"src/*.h\" --initial --silent --command 'bun run build:wasm'",
     "serve": "roll serve"
   },
+  "dependencies": {
+    "@preact/signals": "^1.3.0",
+    "preact": "^10.24.3"
+  },
   "devDependencies": {
-    "@tangible/roller": "^2.0.5",
+    "@tangible/git-subrepo": "^1.0.1",
+    "@tangible/roller": "^2.1.4",
     "chokidar-cli": "^3.0.0",
-    "concurrently": "^8.2.2"
+    "concurrently": "^9.0.1"
   }
 }

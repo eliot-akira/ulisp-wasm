@@ -1,8 +1,9 @@
 /**
  * uLisp WASM based on:
+ * - uLisp Builder 4.6  https://github.com/technoblogy/ulisp-builder
  * - uLisp ESP Release 4.6b https://github.com/technoblogy/ulisp-esp
  *   David Johnson-Davies - www.ulisp.com - www.technoblogy.com
- * - And fork at v3.6 https://github.com/lupyuen/ulisp-bl602
+ * - BL602 fork at v3.6 https://github.com/lupyuen/ulisp-bl602
  * MIT license: https://opensource.org/licenses/MIT
  */
 
@@ -24,9 +25,10 @@ const char LispLibrary[] = "";
 // Includes
 
 // #include "LispLibrary.h"
-#include <setjmp.h>
-#if defined(__EMSCRIPTEN__)
+// #include <SPI.h>
+// #include <Wire.h>
 #include <limits.h>
+// #include <WiFi.h>
 #include <setjmp.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -36,24 +38,18 @@ const char LispLibrary[] = "";
 #include <string.h>
 #include <assert.h>
 #include <emscripten.h>
-#else
-#include <SPI.h>
-#include <Wire.h>
-#include <limits.h>
-#include <WiFi.h>
-#endif
 
 #if defined(gfxsupport)
-#define COLOR_WHITE ST77XX_WHITE
-#define COLOR_BLACK ST77XX_BLACK
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
-#if defined(ARDUINO_ESP32_DEV)
-Adafruit_ST7789 tft = Adafruit_ST7789(5, 16, 19, 18);
-#define TFT_BACKLITE 4
-#else
-Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
-#endif
+// #define COLOR_WHITE ST77XX_WHITE
+// #define COLOR_BLACK ST77XX_BLACK
+// #include <Adafruit_GFX.h>    // Core graphics library
+// #include <Adafruit_ST7789.h> // Hardware-specific library for ST7789
+// #if defined(ARDUINO_ESP32_DEV)
+// Adafruit_ST7789 tft = Adafruit_ST7789(5, 16, 19, 18);
+// #define TFT_BACKLITE 4
+// #else
+// Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
+// #endif
 #endif
 
 #if defined(sdcardsupport)
@@ -75,7 +71,7 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define SDCARD_SS_PIN 13
 #define LED_BUILTIN 13
 
-#define EEPROMSIZE        4096              /* Bytes available for EEPROM */
+// #define EEPROMSIZE        4096              /* Bytes available for EEPROM */
 
 // From fork
 #define PROGMEM
@@ -282,7 +278,9 @@ bool colonp (symbol_t name);
 void pbuiltin (builtin_t name, pfun_t pfun);
 void plispstr (symbol_t name, pfun_t pfun);
 
-// WebAssembly interface
+/*
+  WebAssembly interface
+*/
 #if defined(__EMSCRIPTEN__)
 
 // Setup environment
@@ -333,6 +331,11 @@ void digitalWrite(int pin, int mode) {
   }, "digitalWrite", pin, mode);
 }
 
+void pinMode(int pin, int mode) {
+  EM_ASM({
+    ulisp.call(UTF8ToString($0), $1, $2);
+  }, "pinMode", pin, mode);  
+}
 #endif
 
 // Error handling
@@ -800,14 +803,14 @@ uint32_t FSRead32 (File file) {
 #elif defined(__EMSCRIPTEN__)
 void EpromWriteInt(int *addr, uintptr_t data) {
   TODO0(EpromWriteInt);
-#ifdef TODO
+#if defined(TODO)
   EEPROM.write((*addr)++, data & 0xFF); EEPROM.write((*addr)++, data>>8 & 0xFF);
   EEPROM.write((*addr)++, data>>16 & 0xFF); EEPROM.write((*addr)++, data>>24 & 0xFF);
 #endif  //  TODO
 }
 int EpromReadInt (int *addr) {
   TODO1(EpromReadInt, 0);
-#ifdef TODO
+#if defined(TODO)
   uint8_t b0 = EEPROM.read((*addr)++); uint8_t b1 = EEPROM.read((*addr)++);
   uint8_t b2 = EEPROM.read((*addr)++); uint8_t b3 = EEPROM.read((*addr)++);
   return b0 | b1<<8 | b2<<16 | b3<<24;
@@ -828,7 +831,7 @@ int EpromReadInt (int *addr) {
 
 unsigned int saveimage (object *arg) {
   TODO1(saveimage, 0);
-#ifdef TODO
+#if defined(TODO)
 #if defined(sdcardsupport)
   unsigned int imagesize = compactimage(&arg);
   SD.begin(SDCARD_SS_PIN);
@@ -907,7 +910,7 @@ unsigned int saveimage (object *arg) {
 
 unsigned int loadimage (object *arg) {
   TODO1(loadimage, 0);
-#ifdef TODO
+#if defined(TODO)
 #if defined(sdcardsupport)
   SD.begin(SDCARD_SS_PIN);
   File file;
@@ -982,7 +985,7 @@ unsigned int loadimage (object *arg) {
 
 void autorunimage () {
   TODO0(autorunimage);
-#ifdef TODO
+#if defined(TODO)
 #if defined(sdcardsupport)
   SD.begin(SDCARD_SS_PIN);
   File file = SD.open("/ULISP.IMG");
@@ -1423,8 +1426,6 @@ int intpower (int base, int exp) {
   }
   return result;
 }
-
-// Association lists
 
 // Association lists
 
@@ -2415,7 +2416,7 @@ void I2Cstop (TwoWire *port, uint8_t read) {
 
 static int spiread () {
     TODO1(spiread, 0);
-#ifdef TODO
+#if defined(TODO)
   return SPI.transfer(0);
 #endif  //  TODO
 }
@@ -2431,7 +2432,7 @@ static int i2c1read () { return I2Cread(&Wire1); }
 #endif
 static int serial1read () {
   TODO1(serial1read, 0);
-#ifdef TODO
+#if defined(TODO)
   while (!Serial1.available()) testescape();
   return Serial1.read();
 #endif  //  TODO
@@ -2448,14 +2449,14 @@ static int SDread () {
 }
 #endif
 
-#ifdef TODO
+#if defined(TODO)
 WiFiClient client;
 WiFiServer server(80);
 #endif  //  TODO
 
 static int WiFiread () {
   TODO1(WiFiread, 0);
-#ifdef TODO
+#if defined(TODO)
   if (LastChar) {
     char temp = LastChar;
     LastChar = 0;
@@ -2468,7 +2469,7 @@ static int WiFiread () {
 
 void serialbegin (int address, int baud) {
   TODO0(serialbegin);
-#ifdef TODO
+#if defined(TODO)
   if (address == 1) Serial1.begin((long)baud*100);
   else error("port not supported", number(address));
 #endif  //  TODO
@@ -2476,7 +2477,7 @@ void serialbegin (int address, int baud) {
 
 void serialend (int address) {
   TODO0(serialend);
-#ifdef TODO
+#if defined(TODO)
   if (address == 1) {Serial1.flush(); Serial1.end(); }
   else error("port not supported", number(address));
 #endif  //  TODO
@@ -2510,13 +2511,13 @@ gfun_t gstreamfun (object *args) {
 
 static void spiwrite (char c) { 
   TODO0(spiwrite);
-#ifdef TODO
+#if defined(TODO)
   SPI.transfer(c); 
 #endif  //  TODO
 }
 static void i2cwrite (char c) {
   TODO0(spiwrite);
-#ifdef TODO
+#if defined(TODO)
   I2Cwrite(&Wire, c); }
 #endif  //  TODO
 }
@@ -2525,13 +2526,13 @@ static void i2c1write (char c) { I2Cwrite(&Wire1, c); }
 #endif
 static void serial1write (char c) { 
   TODO0(serial1write);
-#ifdef TODO
+#if defined(TODO)
   Serial1.write(c); 
 #endif  //  TODO
 }
 static void WiFiwrite (char c) { 
   TODO0(WiFiwrite);
-#ifdef TODO
+#if defined(TODO)
   client.write(c); 
 #endif  //  TODO
 }
@@ -2640,7 +2641,7 @@ void initsleep () { }
 
 void doze (int secs) {
   TODO0(sleep);
-#ifdef TODO
+#if defined(TODO)
   delay(1000 * secs);
 #endif  //  TODO
 }
@@ -3140,7 +3141,7 @@ object *sp_untrace (object *args, object *env) {
 */
 object *sp_formillis (object *args, object *env) {
   TODO1(sp_formillis, nil);
-#ifdef TODO
+#if defined(TODO)
   object *param = checkarguments(args, 0, 1);
   unsigned long start = millis();
   unsigned long now, total = 0;
@@ -3271,7 +3272,7 @@ object *sp_withi2c (object *args, object *env) {
 */
 object *sp_withspi (object *args, object *env) {
   TODO1(sp_withspi, nil);
-#ifdef TODO
+#if defined(TODO)
   object *params = checkarguments(args, 2, 6);
   object *var = first(params);
   params = cdr(params);
@@ -4196,11 +4197,11 @@ object *fn_random (object *args, object *env) {
   (void) env;
   object *arg = first(args);
 #if defined(__EMSCRIPTEN__)
-  if (integerp(arg)) return number(random());
+  if (integerp(arg)) return number(random() % arg->integer);
 #else
   if (integerp(arg)) return number(random(arg->integer));
 #endif
-  else if (floatp(arg)) return makefloat((float)rand()/(float)(RAND_MAX/(arg->single_float)));
+  else if (floatp(arg)) return makefloat((float)rand()/((float)RAND_MAX/(arg->single_float)));
   else error(notanumber, arg);
   return nil;
 }
@@ -4967,7 +4968,7 @@ object *fn_ash (object *args, object *env) {
 */
 object *fn_logbitp (object *args, object *env) {
   TODO1(fn_logbitp, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   int index = checkinteger(first(args));
   int value = checkinteger(second(args));
@@ -5280,9 +5281,7 @@ object *fn_pinmode (object *args, object *env) {
     else if (mode == 4) pm = INPUT_PULLDOWN;
     #endif
   } else if (arg != nil) pm = OUTPUT;
-#if defined(TODO)
   pinMode(pin, pm);
-#endif // TODO
   return nil;
 }
 /*
@@ -5341,7 +5340,7 @@ object *fn_analogread (object *args, object *env) {
 */
 object *fn_analogreadresolution (object *args, object *env) {
   TODO1(fn_analogreadresolution, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   object *arg = first(args);
   #if defined(ESP32)
@@ -5376,12 +5375,17 @@ object *fn_analogwrite (object *args, object *env) {
 object *fn_delay (object *args, object *env) {
   (void) env;
   object *arg1 = first(args);
-  unsigned long start = 0; // TODO: millis();
-  unsigned long total = checkinteger(arg1);
-#if !defined(__EMSCRIPTEN__)
-  do testescape();
-  while (millis() - start < total);
-#endif
+  unsigned long start = millis();
+  unsigned int total = checkinteger(arg1); // long
+  // do testescape();
+
+  // Allow stopping at any time
+  while (millis() - start < total) {
+    yield_loop();
+  };
+
+  // Sleep cannot be interrupted
+  // emscripten_sleep(total);
   return arg1;
 }
 
@@ -5401,7 +5405,7 @@ object *fn_millis (object *args, object *env) {
 */
 object *fn_sleep (object *args, object *env) {
   TODO1(fn_sleep, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   object *arg1 = first(args);
   doze(checkinteger(arg1));
@@ -5417,7 +5421,7 @@ object *fn_sleep (object *args, object *env) {
 */
 object *fn_note (object *args, object *env) {
   TODO1(fn_note, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   static int pin = 255;
   if (args != NULL) {
@@ -5814,7 +5818,7 @@ object *fn_directory (object *args, object *env) {
 */
 object *sp_withclient (object *args, object *env) {
   TODO1(sp_withclient, nil);
-#ifdef TODO
+#if defined(TODO)
   object *params = checkarguments(args, 1, 3);
   object *var = first(params);
   char buffer[BUFFERSIZE];
@@ -5849,7 +5853,7 @@ object *sp_withclient (object *args, object *env) {
 */
 object *fn_available (object *args, object *env) {
   TODO1(fn_available, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   if (isstream(first(args))>>8 != WIFISTREAM) error2("invalid stream");
   return number(client.available());
@@ -5862,7 +5866,7 @@ object *fn_available (object *args, object *env) {
 */
 object *fn_wifiserver (object *args, object *env) {
   TODO1(fn_wifiserver, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) args, (void) env;
   server.begin();
   return nil;
@@ -5876,7 +5880,7 @@ object *fn_wifiserver (object *args, object *env) {
 */
 object *fn_wifisoftap (object *args, object *env) {
   TODO1(fn_wifisoftap, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   char ssid[33], pass[65];
   if (args == NULL) return WiFi.softAPdisconnect(true) ? tee : nil;
@@ -5904,7 +5908,7 @@ object *fn_wifisoftap (object *args, object *env) {
 */
 object *fn_connected (object *args, object *env) {
   TODO1(fn_connected, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   if (isstream(first(args))>>8 != WIFISTREAM) error2("invalid stream");
   return client.connected() ? tee : nil;
@@ -5917,7 +5921,7 @@ object *fn_connected (object *args, object *env) {
 */
 object *fn_wifilocalip (object *args, object *env) {
   TODO1(fn_wifilocalip, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) args, (void) env;
   return iptostring(WiFi.localIP());
 #endif  //  TODO
@@ -5929,7 +5933,7 @@ object *fn_wifilocalip (object *args, object *env) {
 */
 object *fn_wificonnect (object *args, object *env) {
   TODO1(fn_wificonnect, nil);
-#ifdef TODO
+#if defined(TODO)
   (void) env;
   char ssid[33], pass[65];
   if (args == NULL) { WiFi.disconnect(true); return nil; }
@@ -7400,7 +7404,7 @@ bool findsubstring (char *part, builtin_t name) {
 }
 
 void testescape () {
-#ifdef TODO
+#if defined(TODO)
   if (Serial.available() && Serial.read() == '~') error2("escape!");
 #endif  //  TODO
 }
@@ -8030,7 +8034,7 @@ void processkey (char c) {
 const char *input_buf = NULL;
 int input_pos = 0;
 int input_len = 0;
-bool replDone = false;
+bool loop_done = false;
 
 /*
   gserial - gets a character from the serial port
@@ -8045,12 +8049,12 @@ int gserial () {
   if (input_pos >= input_len) {
     //  No more chars to read
     LastChar = 0;
-    replDone = true; // TODO: Stop
+    loop_done = true; // TODO: Stop
     return '\n';
   }
   return input_buf[input_pos++];
 
-#ifdef TODO
+#if defined(TODO)
 #if defined(lineeditor)
   while (!KybdAvailable) {
     while (!Serial.available());
@@ -8076,7 +8080,7 @@ int gserial () {
 */
 object *nextitem (gfun_t gfun) {
   int ch = gfun();
-  if (replDone) return NULL; // TODO:
+  if (loop_done) return NULL; // TODO:
   while(issp(ch)) {
     ch = gfun();
   }
@@ -8296,7 +8300,7 @@ void setup () {
 */
 void repl (object *env) {
   for (;;) {
-    if (replDone) return;
+    if (loop_done) return;
     // randomSeed(micros()); // TODO:
     if (!tstflag(NOECHO)) gc(NULL, env);
     #if defined(printfreespace)
@@ -8310,7 +8314,7 @@ void repl (object *env) {
     Context = NIL;
 
     object *line = read(gserial);
-    if (replDone) return; // TODO:
+    if (loop_done) return; // TODO:
 
     if (BreakLevel && line == nil) { pln(pserial); return; }
     if (line == (object *)KET) error2("unmatched right bracket");
@@ -8340,10 +8344,10 @@ void ulisperror () {
 }
 
 /*
-  loop - the Arduino IDE main execution loop
+  loop - Main execution loop
 */
 void loop () {
-  replDone = false;
+  loop_done = false;
   if (!setjmp(toplevel_handler)) {
     #if defined(resetautorun)
     volatile int autorun = 12; // Fudge to keep code size the same
@@ -8356,31 +8360,31 @@ void loop () {
   repl(NULL);
 }
 
-/// Execute the command line
+/*
+  WebAssembly interface
+*/
+#if defined(__EMSCRIPTEN__)
+
+EM_ASYNC_JS(int, wait_for_tick, (), {
+  return await ulisp.wait_for_tick();
+});
+
+// Yield evaluation loop and allow background tasks to run.
+/// Called by eval() and sp_loop()
+void yield_loop(void) {
+  // Wait until host calls next tick
+  if (wait_for_tick()) {
+    errorend();
+  }
+}
+
+// Evaluate expression
 void evaluate(const char *line) {
   assert(line != NULL);
   input_buf = line;
   input_pos = 0;
   input_len = strlen(line);
   loop();
-}
-
-/*
-  WebAssembly interface
-*/
-#if defined(__EMSCRIPTEN__)
-
-int ticks = 0;
-
-// Yield evaluation loop and allow background tasks to run.
-/// Called by eval() and sp_loop()
-void yield_loop(void) {
-  ticks++;
-  if (ticks > 1024) {
-    puts("Too many iterations, stopping the loop");
-    // extern jmp_buf *handler;
-    longjmp(*handler, 1);
-  }
 }
 
 #endif

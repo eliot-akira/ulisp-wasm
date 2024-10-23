@@ -1,8 +1,13 @@
 const $console = document.getElementById('console')
 const canvas = document.getElementById('canvas')
 
-const Module = (window.Module = {
-  print: (function () {
+console.log('createUlispModule', createUlispModule)
+
+;(async () => {
+
+  const Module = await createUlispModule({
+
+    print: (function () {
     if (!$console) return
 
     $console.value = ''
@@ -21,13 +26,13 @@ const Module = (window.Module = {
           try {
             const value = JSON.parse(text.replace(/^json:/, ''))
             console.log('Got value', value)
-          } catch(e) {
+          } catch (e) {
             console.log(e)
           }
         } else if (text) {
           console.log(text)
           $console.innerText += text + '\n'
-          $console.scrollTop = $console.scrollHeight // focus on bottom  
+          $console.scrollTop = $console.scrollHeight // focus on bottom
         }
       }
     }
@@ -49,15 +54,18 @@ const Module = (window.Module = {
 
     return canvas
   })(),
-  setStatus: (text) => {
-    if (!Module.setStatus.last)
-      Module.setStatus.last = { time: Date.now(), text: '' }
-    if (text === Module.setStatus.last.text) return
+  setStatus: function(text) {
+
+console.log('this', this)
+    
+    if (!this.setStatus.last)
+      this.setStatus.last = { time: Date.now(), text: '' }
+    if (text === this.setStatus.last.text) return
     const m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/)
     const now = Date.now()
-    if (m && now - Module.setStatus.last.time < 30) return // if this is a progress update, skip it if too soon
-    Module.setStatus.last.time = now
-    Module.setStatus.last.text = text
+    if (m && now - this.setStatus.last.time < 30) return // if this is a progress update, skip it if too soon
+    this.setStatus.last.time = now
+    this.setStatus.last.text = text
     if (m) {
       text = m[1]
       // progressElement.value = parseInt(m[2])*100;
@@ -78,13 +86,13 @@ const Module = (window.Module = {
   },
   totalDependencies: 0,
   // monitorRunDependencies: (left) => {
-  //   Module.totalDependencies = Math.max(Module.totalDependencies, left)
-  //   Module.setStatus(
+  //   this.totalDependencies = Math.max(this.totalDependencies, left)
+  //   this.setStatus(
   //     left
   //       ? 'Preparing... (' +
-  //           (Module.totalDependencies - left) +
+  //           (this.totalDependencies - left) +
   //           '/' +
-  //           Module.totalDependencies +
+  //           this.totalDependencies +
   //           ')'
   //       : 'All downloads complete.'
   //   )
@@ -101,50 +109,93 @@ window.onerror = (event) => {
   }
 }
 
+const tickQueue = []
+let shouldStop = false
+
 /// Wait for emscripten to be initialised
-Module.onRuntimeInitialized = function () {
+// Module.onRuntimeInitialized = function () {
   // Module.print('Init uLisp\n')
   Module._setup()
 
-  const ulisp = window.ulisp =  {
+  const ulisp = (window.ulisp = {
     run,
     // Called from Module
     call(command, ...args) {
       console.log('ulisp.call', command, ...args)
-      switch(command) {
+      switch (command) {
         case 'analogRead':
           return args[0] / 2
-        break
+          break
         case 'analogWrite':
-        break
+          break
         case 'digitalRead':
           return args[0]
-        break
+          break
         case 'digitalWrite':
-        break
+          break
       }
+    },
+    escape() {
+      // Return 1 to stop the runtime
+      return 0
+    },
+    wait_for_tick() {
+      if (shouldStop) return 1
+      return new Promise((resolve, reject) => {
+        tickQueue.push(resolve)
+      })
+    },
+    stop() {
+      shouldStop = true
     }
-  }
+  })
 
-  run('(+ 1 (* 2 3))')
+  const $codeForm = document.getElementById('code-form')
+  const $code = document.getElementById('code')
+  const $run = document.getElementById('run')
 
+  $codeForm.addEventListener('submit', function (e) {
+    e.preventDefault()
+    run($code.value)
+  })
+  $run.addEventListener('click', function () {
+    console.log('click')
+    run($code.value)
+  })
+
+  $code.value = `(+ 1 (* 2 3))`
+  $run.click()
+// }
+
+async function tick() {
+  const callback = tickQueue.shift()
+  if (!callback) return false
+  await new Promise((resolve, reject) => {
+
+    callback(shouldStop ? 1 : 0)
+
+    // Next tick on event loop
+    setTimeout(resolve, 0)
+  })
+  return tickQueue.length
 }
 
-// var scr = document.getElementById("input").value;
+async function run(code) {
 
-function run(code) {
-
-  //  Create a pointer
-  const ptr = Module.allocate(Module.intArrayFromString(code), Module.ALLOC_NORMAL)
-
-  //  Execute the uLisp script
   Module.print('\n> ' + code + '\n')
+
+  shouldStop = false
+
+  //  Allocate memory for the string and create a pointer
+  const ptr = Module.stringToNewUTF8(code)
   Module._evaluate(ptr)
 
-  //  Free the memory allocated
-  Module._free(ptr)
+  // Call tick until done
 
-  //  More about passing a string from JavaScript to C WebAssembly:
-  //  https://emscripten.org/docs/porting/connecting_cpp_and_javascript/Interacting-with-code.html
-  //  https://stackoverflow.com/questions/46815205/how-to-pass-a-string-to-c-code-compiled-with-emscripten-for-webassembly
+  while (await tick()) {}
+
+  // Free the memory
+  Module._free(ptr)
 }
+
+})().catch(console.error)

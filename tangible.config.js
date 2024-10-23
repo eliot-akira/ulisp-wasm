@@ -2,7 +2,8 @@ export default {
   build: [
     {
       src: 'src/index.html',
-      dest: 'docs'
+      dest: 'docs',
+      react: 'preact'
     },
     {
       src: 'src/index.js',
