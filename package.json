@@ -10,13 +10,14 @@
     "serve": "roll serve"
   },
   "dependencies": {
-    "@preact/signals": "^1.3.0",
-    "preact": "^10.24.3"
+    "@preact/signals": "^2.0.1",
+    "caniuse-lite": "^1.0.30001696",
+    "preact": "^10.25.4"
   },
   "devDependencies": {
     "@tangible/git-subrepo": "^1.0.1",
     "@tangible/roller": "^2.1.4",
     "chokidar-cli": "^3.0.0",
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.1.2"
   }
 }
