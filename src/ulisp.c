@@ -163,8 +163,8 @@ typedef uint32_t chars_t;
 typedef struct sobject {
   union {
     struct {
-      sobject *car;
-      sobject *cdr;
+      struct sobject *car;
+      struct sobject *cdr;
     };
     struct {
       unsigned int type;
@@ -241,14 +241,8 @@ void pfstring (const char *s, pfun_t pfun);
 
 // https://github.com/espressif/arduino-esp32/blob/ba2ab1e4bb59fe9601e8dd9c0ebbc544dfeca242/cores/esp32/Arduino.h#L99
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+#define testescape yield_loop
 
-static symbol_t twist (builtin_t x) {
-  return (x<<2) | ((x & 0xC0000000)>>30);
-}
-
-static builtin_t untwist (symbol_t x) {
-  return (x>>2 & 0x3FFFFFFF) | ((x & 0x03)<<30);
-}
 object *tf_progn (object *args, object *env);
 object *read (gfun_t gfun);
 void printobject (object *form, pfun_t pfun);
@@ -266,7 +260,6 @@ void pintbase (uint32_t i, uint8_t power2, pfun_t pfun);
 int subwidthlist (object *form, int w);
 void prin1object (object *form, pfun_t pfun);
 void printstring (object *form, pfun_t pfun);
-void testescape ();
 int glibrary ();
 symbol_t sym (builtin_t x);
 object *intern (symbol_t name);
@@ -280,6 +273,7 @@ void pstr (char c);
 object *findpair (object *var, object *env);
 char *lookupdoc (builtin_t name);
 char *cstring (object *form, char *buffer, int buflen);
+object *symbol (symbol_t name);
 void printsymbol (object *form, pfun_t pfun);
 unsigned int tablesize (int n);
 bool findsubstring (char *part, builtin_t name);
@@ -289,6 +283,7 @@ object *fn_princtostring (object *args, object *env);
 bool colonp (symbol_t name);
 void pbuiltin (builtin_t name, pfun_t pfun);
 void plispstr (symbol_t name, pfun_t pfun);
+
 
 // Setup environment
 void setup();
@@ -312,6 +307,10 @@ double millis() {
   return EM_ASM_DOUBLE({
     return performance.now() - $0;
   }, startTime);
+}
+
+long micros() {
+  return (long) (millis() / 1000);
 }
 
 double analogRead(int pin) {
@@ -2009,12 +2008,12 @@ char *cstring (object *form, char *buffer, int buflen) {
   iptostring - converts a 32-bit IP address to a lisp string
 */
 object *iptostring (uint32_t ip) {
-  union { uint32_t data2; uint8_t u8[4]; };
+  union { uint32_t data2; uint8_t u8[4]; } u;
   object *obj = startstring();
-  data2 = ip;
+  u.data2 = ip;
   for (int i=0; i<4; i++) {
     if (i) pstr('.');
-    pintbase(u8[i], 10, pstr);
+    pintbase(u.u8[i], 10, pstr);
   }
   return obj;
 }
@@ -2026,20 +2025,20 @@ object *iptostring (uint32_t ip) {
 uint32_t ipstring (object *form) {
   form = cdr(checkstring(form));
   int p = 0;
-  union { uint32_t ipaddress; uint8_t ipbytes[4]; } ;
-  ipaddress = 0;
+  union { uint32_t ipaddress; uint8_t ipbytes[4]; } u;
+  u.ipaddress = 0;
   while (form != NULL) {
     int chars = form->integer;
     for (int i=(sizeof(int)-1)*8; i>=0; i=i-8) {
       char ch = chars>>i & 0xFF;
       if (ch) {
         if (ch == '.') { p++; if (p > 3) error2("illegal IP address"); }
-        else ipbytes[p] = (ipbytes[p] * 10) + ch - '0';
+        else u.ipbytes[p] = (u.ipbytes[p] * 10) + ch - '0';
       }
     }
     form = car(form);
   }
-  return ipaddress;
+  return u.ipaddress;
 }
 
 /*
@@ -2433,20 +2432,20 @@ void I2Cstop (uint8_t read) {
   TODO0(I2Cstop);
 }
 
-inline int spiread () { TODO1(spiread, 0); }
-inline void spiwrite (char c) { TODO0(spiwrite); }
+int spiread () { TODO1(spiread, 0); }
+void spiwrite (char c) { TODO0(spiwrite); }
 
-inline int i2cread () { return I2Cread(); }
-inline void i2cwrite (char c) { TODO0(spiwrite); }
+int i2cread () { return I2Cread(); }
+void i2cwrite (char c) { TODO0(spiwrite); }
 
-inline int serial1read () { TODO1(serial1read, 0); }
-inline void serial1write (char c) { TODO0(serial1write); }
+int serial1read () { TODO1(serial1read, 0); }
+void serial1write (char c) { TODO0(serial1write); }
 
-inline int WiFiread () { TODO1(WiFiread, 0); }
-inline void WiFiwrite (char c) { TODO0(WiFiwrite); }
+int WiFiread () { TODO1(WiFiread, 0); }
+void WiFiwrite (char c) { TODO0(WiFiwrite); }
 
-inline void SDwrite (char c) { TODO0(SDwrite); }
-inline void gfxwrite (char c) { TODO0(gfxwrite); }
+void SDwrite (char c) { TODO0(SDwrite); }
+void gfxwrite (char c) { TODO0(gfxwrite); }
 
 void serialbegin (int address, int baud) { TODO0(serialbegin); }
 void serialend (int address) { TODO0(serialend); }
@@ -2751,7 +2750,6 @@ object *sp_setq (object *args, object *env) {
 object *sp_loop (object *args, object *env) {
   object *start = args;
   for (;;) {
-    yield_loop();
     args = start;
     while (args != NULL) {
       object *result = eval(car(args),env);
@@ -4077,10 +4075,10 @@ object *fn_oneminus (object *args, object *env) {
 object *fn_abs (object *args, object *env) {
   (void) env;
   object *arg = first(args);
-  if (floatp(arg)) return makefloat(abs(arg->single_float));
+  if (floatp(arg)) return makefloat(fabs(arg->single_float));
   else if (integerp(arg)) {
     int result = arg->integer;
-    if (result == INT_MIN) return makefloat(abs((float)result));
+    if (result == INT_MIN) return makefloat(fabsf((float)result));
     else return number(abs(result));
   } else error(notanumber, arg);
   return nil;
@@ -4436,8 +4434,8 @@ object *fn_expt (object *args, object *env) {
   (void) env;
   object *arg1 = first(args); object *arg2 = second(args);
   float float1 = checkintfloat(arg1);
-  float value = log(abs(float1)) * checkintfloat(arg2);
-  if (integerp(arg1) && integerp(arg2) && ((arg2->integer) >= 0) && (abs(value) < 21.4875))
+  float value = log(fabs(float1)) * checkintfloat(arg2);
+  if (integerp(arg1) && integerp(arg2) && ((arg2->integer) >= 0) && (fabs(value) < 21.4875))
     return number(intpower(arg1->integer, arg2->integer));
   if (float1 < 0) {
     if (integerp(arg2)) return makefloat((arg2->integer & 1) ? -exp(value) : exp(value));
@@ -4947,9 +4945,13 @@ object *fn_break (object *args, object *env) {
   If stream is specified the item is read from the specified stream.
 */
 object *fn_read (object *args, object *env) {
+#ifdef __EMSCRIPTEN__
+  TODO1(fn_read, nil);
+#else
   (void) env;
   gfun_t gfun = gstreamfun(args);
   return read(gfun);
+#endif
 }
 
 /*
@@ -5010,10 +5012,14 @@ object *fn_terpri (object *args, object *env) {
   Reads a byte from a stream and returns it.
 */
 object *fn_readbyte (object *args, object *env) {
+#if defined(__EMSCRIPTEN__)
+  TODO1(fn_readbyte, nil);
+#else
   (void) env;
   gfun_t gfun = gstreamfun(args);
   int c = gfun();
   return (c == -1) ? nil : number(c);
+#endif
 }
 
 /*
@@ -5022,9 +5028,13 @@ object *fn_readbyte (object *args, object *env) {
   If stream is specified the line is read from the specified stream.
 */
 object *fn_readline (object *args, object *env) {
+#if defined(__EMSCRIPTEN__)
+  TODO1(fn_readline, nil);
+#else
   (void) env;
   gfun_t gfun = gstreamfun(args);
   return readstring('\n', false, gfun);
+#endif
 }
 
 /*
@@ -5077,6 +5087,9 @@ object *fn_writeline (object *args, object *env) {
   If read-p is an integer it specifies the number of bytes to be read from the stream.
 */
 object *fn_restarti2c (object *args, object *env) {
+#if defined(__EMSCRIPTEN__)
+  TODO1(fn_restarti2c, nil);
+#else
   (void) env;
   int stream = isstream(first(args));
   args = cdr(args);
@@ -5095,6 +5108,7 @@ object *fn_restarti2c (object *args, object *env) {
   else port = &Wire1;
   #endif
   return I2Crestart(port, address & 0x7F, read) ? tee : nil;
+#endif
 }
 
 /*
@@ -5281,7 +5295,6 @@ object *fn_delay (object *args, object *env) {
   object *arg1 = first(args);
   unsigned long start = millis();
   unsigned int total = checkinteger(arg1); // long?
-  // do testescape();
   // Allow stopping at any time
   while (millis() - start < total) {
     yield_loop();
@@ -7325,13 +7338,12 @@ bool findsubstring (char *part, builtin_t name) {
   return (strstr(table(n?0:1)[n?name:name-tablesize(0)].string, part) != NULL);
 }
 
+#if !defined(__EMSCRIPTEN__)
+// Replaced by yield_loop()
 void testescape () {
-#if defined(__EMSCRIPTEN__)
-  TODO1(testescape, nil);
-#else
   if (Serial.available() && Serial.read() == '~') error2("escape!");
-#endif
 }
+#endif
 
 /*
   colonp - check that a user-defined symbol starts with a colon and is therefore a keyword
