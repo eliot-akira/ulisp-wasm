@@ -1,17 +1,21 @@
 {
-  "name": "ulisp-wasm",
+  "name": "ulisp-web",
+  "version": "4.7.0",
   "type": "module",
   "scripts": {
     "start": "concurrently --raw 'bun run dev' 'bun run dev:wasm'",
     "dev": "roll dev",
-    "build": "roll build && bun run build:wasm",
-    "build:wasm": "emcc src/ulisp.c -O2 -sENVIRONMENT=web -sASYNCIFY -sMODULARIZE -sEXPORT_NAME=createUlispModule -g -I src -sWASM=1 -s \"EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free' ]\" -s \"EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]\" -o docs/ulisp.js",
-    "dev:wasm": "chokidar \"src/*.c\" \"src/*.h\" --initial --silent --command 'bun run build:wasm'",
-    "serve": "roll serve"
+    "build": "roll build && bun run emcc:build",
+    "emcc": "docker compose run --remove-orphans --rm builder emcc",
+    "emcc:build": "docker compose run --remove-orphans --rm builder emcc src/ulisp.c -I src -o docs/ulisp.js -O2 -fms-extensions -sENVIRONMENT=web -sEXPORT_NAME=createUlispModule -sASYNCIFY -sMODULARIZE -g -sWASM=1 -s \"EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free' ]\" -s \"EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]\"",
+    "emcc:down": "docker compose down --remove-orphans",
+    "emcc:remove": "docker compose down --rmi local",
+    "dev:wasm": "chokidar \"src/*.c\" \"src/*.h\" --initial --silent --command 'bun run emcc:build'",
+    "serve": "roll serve",
+    "update": "git-subrepo pull builder"
   },
   "dependencies": {
     "@preact/signals": "^2.0.1",
-    "caniuse-lite": "^1.0.30001696",
     "preact": "^10.25.4"
   },
   "devDependencies": {

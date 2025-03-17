@@ -1,9 +1,8 @@
-
 var createUlispModule = (() => {
   var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
   
   return (
-function(moduleArg = {}) {
+async function(moduleArg = {}) {
   var moduleRtn;
 
 // include: shell.js
@@ -46,7 +45,7 @@ var ENVIRONMENT_IS_SHELL = false;
 // we collect those properties and reapply _after_ we configure
 // the current environment's defaults to avoid having to be so
 // defensive during initialization.
-var moduleOverrides = Object.assign({}, Module);
+var moduleOverrides = {...Module};
 
 var arguments_ = [];
 var thisProgram = './this.program';
@@ -89,19 +88,17 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (scriptDirectory.startsWith('blob:')) {
     scriptDirectory = '';
   } else {
-    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
+    scriptDirectory = scriptDirectory.slice(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
   }
 
   {
 // include: web_or_worker_shell_read.js
-readAsync = (url) => {
-    return fetch(url, { credentials: 'same-origin' })
-      .then((response) => {
-        if (response.ok) {
-          return response.arrayBuffer();
-        }
-        return Promise.reject(new Error(response.status + ' : ' + response.url));
-      })
+readAsync = async (url) => {
+    var response = await fetch(url, { credentials: 'same-origin' });
+    if (response.ok) {
+      return response.arrayBuffer();
+    }
+    throw new Error(response.status + ' : ' + response.url);
   };
 // end include: web_or_worker_shell_read.js
   }
@@ -127,8 +124,6 @@ if (Module['arguments']) arguments_ = Module['arguments'];
 
 if (Module['thisProgram']) thisProgram = Module['thisProgram'];
 
-if (Module['quit']) quit_ = Module['quit'];
-
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 // end include: shell.js
 
@@ -143,8 +138,7 @@ if (Module['quit']) quit_ = Module['quit'];
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-var wasmBinary; 
-if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
+var wasmBinary = Module['wasmBinary'];
 
 // Wasm globals
 
@@ -194,10 +188,34 @@ var HEAP,
   HEAPU32,
 /** @type {!Float32Array} */
   HEAPF32,
+/* BigInt64Array type is not correctly defined in closure
+/** not-@type {!BigInt64Array} */
+  HEAP64,
+/* BigUint64Array type is not correctly defined in closure
+/** not-t@type {!BigUint64Array} */
+  HEAPU64,
 /** @type {!Float64Array} */
   HEAPF64;
 
+var runtimeInitialized = false;
+
+/**
+ * Indicates whether filename is delivered via file protocol (as opposed to http/https)
+ * @noinline
+ */
+var isFileURI = (filename) => filename.startsWith('file://');
+
 // include: runtime_shared.js
+// include: runtime_stack_check.js
+// end include: runtime_stack_check.js
+// include: runtime_exceptions.js
+// end include: runtime_exceptions.js
+// include: runtime_debug.js
+// end include: runtime_debug.js
+// include: memoryprofiler.js
+// end include: memoryprofiler.js
+
+
 function updateMemoryViews() {
   var b = wasmMemory.buffer;
   Module['HEAP8'] = HEAP8 = new Int8Array(b);
@@ -208,19 +226,11 @@ function updateMemoryViews() {
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
   Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
+  Module['HEAP64'] = HEAP64 = new BigInt64Array(b);
+  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(b);
 }
+
 // end include: runtime_shared.js
-// include: runtime_stack_check.js
-// end include: runtime_stack_check.js
-// include: runtime_assertions.js
-// end include: runtime_assertions.js
-var __ATPRERUN__  = []; // functions called before the runtime is initialized
-var __ATINIT__    = []; // functions called during startup
-var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the main() is called
-
-var runtimeInitialized = false;
-
 function preRun() {
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
@@ -228,14 +238,17 @@ function preRun() {
       addOnPreRun(Module['preRun'].shift());
     }
   }
-  callRuntimeCallbacks(__ATPRERUN__);
+  callRuntimeCallbacks(onPreRuns);
 }
 
 function initRuntime() {
   runtimeInitialized = true;
 
   
-  callRuntimeCallbacks(__ATINIT__);
+
+  wasmExports['__wasm_call_ctors']();
+
+  
 }
 
 function postRun() {
@@ -247,34 +260,9 @@ function postRun() {
     }
   }
 
-  callRuntimeCallbacks(__ATPOSTRUN__);
+  callRuntimeCallbacks(onPostRuns);
 }
 
-function addOnPreRun(cb) {
-  __ATPRERUN__.unshift(cb);
-}
-
-function addOnInit(cb) {
-  __ATINIT__.unshift(cb);
-}
-
-function addOnExit(cb) {
-}
-
-function addOnPostRun(cb) {
-  __ATPOSTRUN__.unshift(cb);
-}
-
-// include: runtime_math.js
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
-
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/fround
-
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32
-
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/trunc
-
-// end include: runtime_math.js
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
 // decrement it. Incrementing must happen in a place like
@@ -283,7 +271,6 @@ function addOnPostRun(cb) {
 // it happens right before run - run will be postponed until
 // the dependencies are met.
 var runDependencies = 0;
-var runDependencyWatcher = null;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
 
 function getUniqueRunDependency(id) {
@@ -303,10 +290,6 @@ function removeRunDependency(id) {
   Module['monitorRunDependencies']?.(runDependencies);
 
   if (runDependencies == 0) {
-    if (runDependencyWatcher !== null) {
-      clearInterval(runDependencyWatcher);
-      runDependencyWatcher = null;
-    }
     if (dependenciesFulfilled) {
       var callback = dependenciesFulfilled;
       dependenciesFulfilled = null;
@@ -325,7 +308,6 @@ function abort(what) {
   err(what);
 
   ABORT = true;
-  EXITSTATUS = 1;
 
   what += '. Build with -sASSERTIONS for more info.';
 
@@ -352,35 +334,11 @@ function abort(what) {
   throw e;
 }
 
-// include: memoryprofiler.js
-// end include: memoryprofiler.js
-// include: URIUtils.js
-// Prefix of data URIs emitted by SINGLE_FILE and related options.
-var dataURIPrefix = 'data:application/octet-stream;base64,';
-
-/**
- * Indicates whether filename is a base64 data URI.
- * @noinline
- */
-var isDataURI = (filename) => filename.startsWith(dataURIPrefix);
-
-/**
- * Indicates whether filename is delivered via file protocol (as opposed to http/https)
- * @noinline
- */
-var isFileURI = (filename) => filename.startsWith('file://');
-// end include: URIUtils.js
-// include: runtime_exceptions.js
-// end include: runtime_exceptions.js
-function findWasmBinary() {
-    var f = 'ulisp.wasm';
-    if (!isDataURI(f)) {
-      return locateFile(f);
-    }
-    return f;
-}
-
 var wasmBinaryFile;
+
+function findWasmBinary() {
+    return locateFile('ulisp.wasm');
+}
 
 function getBinarySync(file) {
   if (file == wasmBinaryFile && wasmBinary) {
@@ -392,57 +350,50 @@ function getBinarySync(file) {
   throw 'both async and sync fetching of the wasm failed';
 }
 
-function getBinaryPromise(binaryFile) {
+async function getWasmBinary(binaryFile) {
   // If we don't have the binary yet, load it asynchronously using readAsync.
-  if (!wasmBinary
-      ) {
+  if (!wasmBinary) {
     // Fetch the binary using readAsync
-    return readAsync(binaryFile).then(
-      (response) => new Uint8Array(/** @type{!ArrayBuffer} */(response)),
-      // Fall back to getBinarySync if readAsync fails
-      () => getBinarySync(binaryFile)
-    );
+    try {
+      var response = await readAsync(binaryFile);
+      return new Uint8Array(response);
+    } catch {
+      // Fall back to getBinarySync below;
+    }
   }
 
   // Otherwise, getBinarySync should be able to get it synchronously
-  return Promise.resolve().then(() => getBinarySync(binaryFile));
+  return getBinarySync(binaryFile);
 }
 
-function instantiateArrayBuffer(binaryFile, imports, receiver) {
-  return getBinaryPromise(binaryFile).then((binary) => {
-    return WebAssembly.instantiate(binary, imports);
-  }).then(receiver, (reason) => {
+async function instantiateArrayBuffer(binaryFile, imports) {
+  try {
+    var binary = await getWasmBinary(binaryFile);
+    var instance = await WebAssembly.instantiate(binary, imports);
+    return instance;
+  } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 
     abort(reason);
-  });
+  }
 }
 
-function instantiateAsync(binary, binaryFile, imports, callback) {
-  if (!binary &&
-      typeof WebAssembly.instantiateStreaming == 'function' &&
-      !isDataURI(binaryFile) &&
-      typeof fetch == 'function') {
-    return fetch(binaryFile, { credentials: 'same-origin' }).then((response) => {
-      // Suppress closure warning here since the upstream definition for
-      // instantiateStreaming only allows Promise<Repsponse> rather than
-      // an actual Response.
-      // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
-      /** @suppress {checkTypes} */
-      var result = WebAssembly.instantiateStreaming(response, imports);
-
-      return result.then(
-        callback,
-        function(reason) {
-          // We expect the most common failure cause to be a bad MIME type for the binary,
-          // in which case falling back to ArrayBuffer instantiation should work.
-          err(`wasm streaming compile failed: ${reason}`);
-          err('falling back to ArrayBuffer instantiation');
-          return instantiateArrayBuffer(binaryFile, imports, callback);
-        });
-    });
+async function instantiateAsync(binary, binaryFile, imports) {
+  if (!binary && typeof WebAssembly.instantiateStreaming == 'function'
+     ) {
+    try {
+      var response = fetch(binaryFile, { credentials: 'same-origin' });
+      var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
+      return instantiationResult;
+    } catch (reason) {
+      // We expect the most common failure cause to be a bad MIME type for the binary,
+      // in which case falling back to ArrayBuffer instantiation should work.
+      err(`wasm streaming compile failed: ${reason}`);
+      err('falling back to ArrayBuffer instantiation');
+      // fall back of instantiateArrayBuffer below
+    };
   }
-  return instantiateArrayBuffer(binaryFile, imports, callback);
+  return instantiateArrayBuffer(binaryFile, imports);
 }
 
 function getWasmImports() {
@@ -455,8 +406,7 @@ function getWasmImports() {
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
-function createWasm() {
-  var info = getWasmImports();
+async function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
@@ -475,8 +425,6 @@ function createWasm() {
     wasmTable = wasmExports['__indirect_function_table'];
     
 
-    addOnInit(wasmExports['__wasm_call_ctors']);
-
     removeRunDependency('wasm-instantiate');
     return wasmExports;
   }
@@ -489,8 +437,10 @@ function createWasm() {
     // receiveInstance() will swap in the exports (to Module.asm) so they can be called
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above PTHREADS-enabled path.
-    receiveInstance(result['instance']);
+    return receiveInstance(result['instance']);
   }
+
+  var info = getWasmImports();
 
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to
@@ -499,49 +449,37 @@ function createWasm() {
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
   if (Module['instantiateWasm']) {
-    try {
-      return Module['instantiateWasm'](info, receiveInstance);
-    } catch(e) {
-      err(`Module.instantiateWasm callback failed with error: ${e}`);
-        // If instantiation fails, reject the module ready promise.
-        readyPromiseReject(e);
-    }
+    return new Promise((resolve, reject) => {
+        Module['instantiateWasm'](info, (mod, inst) => {
+          receiveInstance(mod, inst);
+          resolve(mod.exports);
+        });
+    });
   }
 
-  if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
-
-  // If instantiation fails, reject the module ready promise.
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult).catch(readyPromiseReject);
-  return {}; // no exports yet; we'll fill them in later
+  wasmBinaryFile ??= findWasmBinary();
+  try {
+    var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
+    var exports = receiveInstantiationResult(result);
+    return exports;
+  } catch (e) {
+    // If instantiation fails, reject the module ready promise.
+    readyPromiseReject(e);
+    return Promise.reject(e);
+  }
 }
-
-// Globals used by JS i64 conversions (see makeSetValue)
-var tempDouble;
-var tempI64;
-
-// include: runtime_debug.js
-// end include: runtime_debug.js
-// === Body ===
-
-var ASM_CONSTS = {
-  51380: () => { return performance.now(); },  
- 51410: ($0) => { return performance.now() - $0; },  
- 51445: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 51490: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 51532: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 51577: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 51619: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
-};
-function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { return await ulisp.wait_for_tick(); }); }
 
 // end include: preamble.js
 
+// Begin JS library code
 
-  /** @constructor */
-  function ExitStatus(status) {
-      this.name = 'ExitStatus';
-      this.message = `Program terminated with exit(${status})`;
-      this.status = status;
+
+  class ExitStatus {
+      name = 'ExitStatus';
+      constructor(status) {
+        this.message = `Program terminated with exit(${status})`;
+        this.status = status;
+      }
     }
 
   var callRuntimeCallbacks = (callbacks) => {
@@ -550,6 +488,12 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
         callbacks.shift()(Module);
       }
     };
+  var onPostRuns = [];
+  var addOnPostRun = (cb) => onPostRuns.unshift(cb);
+
+  var onPreRuns = [];
+  var addOnPreRun = (cb) => onPreRuns.unshift(cb);
+
 
   
     /**
@@ -563,7 +507,7 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
       case 'i8': return HEAP8[ptr];
       case 'i16': return HEAP16[((ptr)>>1)];
       case 'i32': return HEAP32[((ptr)>>2)];
-      case 'i64': abort('to do getValue(i64) use WASM_BIGINT');
+      case 'i64': return HEAP64[((ptr)>>3)];
       case 'float': return HEAPF32[((ptr)>>2)];
       case 'double': return HEAPF64[((ptr)>>3)];
       case '*': return HEAPU32[((ptr)>>2)];
@@ -586,7 +530,7 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
       case 'i8': HEAP8[ptr] = value; break;
       case 'i16': HEAP16[((ptr)>>1)] = value; break;
       case 'i32': HEAP32[((ptr)>>2)] = value; break;
-      case 'i64': abort('to do setValue(i64) use WASM_BIGINT');
+      case 'i64': HEAP64[((ptr)>>3)] = BigInt(value); break;
       case 'float': HEAPF32[((ptr)>>2)] = value; break;
       case 'double': HEAPF64[((ptr)>>3)] = value; break;
       case '*': HEAPU32[((ptr)>>2)] = value; break;
@@ -605,18 +549,18 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
      * array that contains uint8 values, returns a copy of that string as a
      * Javascript String object.
      * heapOrArray is either a regular array, or a JavaScript typed array view.
-     * @param {number} idx
+     * @param {number=} idx
      * @param {number=} maxBytesToRead
      * @return {string}
      */
-  var UTF8ArrayToString = (heapOrArray, idx, maxBytesToRead) => {
+  var UTF8ArrayToString = (heapOrArray, idx = 0, maxBytesToRead = NaN) => {
       var endIdx = idx + maxBytesToRead;
       var endPtr = idx;
       // TextDecoder needs to know the byte length in advance, it doesn't stop on
       // null terminator by itself.  Also, use the length info to avoid running tiny
       // strings through TextDecoder, since .subarray() allocates garbage.
       // (As a tiny code save trick, compare endPtr against endIdx using a negation,
-      // so that undefined means Infinity)
+      // so that undefined/NaN means Infinity)
       while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
   
       if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
@@ -669,11 +613,8 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
   var UTF8ToString = (ptr, maxBytesToRead) => {
       return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
     };
-  var ___assert_fail = (condition, filename, line, func) => {
+  var ___assert_fail = (condition, filename, line, func) =>
       abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
-    };
-
-  var __emscripten_memcpy_js = (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num);
 
   var __emscripten_throw_longjmp = () => {
       throw Infinity;
@@ -694,6 +635,7 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
         readEmAsmArgsArray.push(
           // Special case for pointers under wasm64 or CAN_ADDRESS_2GB mode.
           ch == 112 ? HEAPU32[((buf)>>2)] :
+          ch == 106 ? HEAP64[((buf)>>3)] :
           ch == 105 ?
             HEAP32[((buf)>>2)] :
             HEAPF64[((buf)>>3)]
@@ -717,6 +659,10 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
   var getHeapMax = () =>
       HEAPU8.length;
   
+  var alignMemory = (size, alignment) => {
+      return Math.ceil(size / alignment) * alignment;
+    };
+  
   var abortOnCannotGrowMemory = (requestedSize) => {
       abort('OOM');
     };
@@ -732,7 +678,7 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
   var printChar = (stream, curr) => {
       var buffer = printCharBuffers[stream];
       if (curr === 0 || curr === 10) {
-        (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+        (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
         buffer.length = 0;
       } else {
         buffer.push(curr);
@@ -776,7 +722,7 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
   var getWasmTableEntry = (funcPtr) => {
       var func = wasmTableMirror[funcPtr];
       if (!func) {
-        if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+        /** @suppress {checkTypes} */
         wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
       }
       return func;
@@ -1012,8 +958,8 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
             }
             Asyncify.state = Asyncify.State.Rewinding;
             runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
-            if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
-              Browser.mainLoop.resume();
+            if (typeof MainLoop != 'undefined' && MainLoop.func) {
+              MainLoop.resume();
             }
             var asyncWasmReturnValue, isError = false;
             try {
@@ -1057,8 +1003,8 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
             Asyncify.state = Asyncify.State.Unwinding;
             // TODO: reuse, don't alloc/free every sleep
             Asyncify.currData = Asyncify.allocateData();
-            if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
-              Browser.mainLoop.pause();
+            if (typeof MainLoop != 'undefined' && MainLoop.func) {
+              MainLoop.pause();
             }
             runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
           }
@@ -1189,7 +1135,6 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
         'string': (str) => {
           var ret = 0;
           if (str !== null && str !== undefined && str !== 0) { // null string
-            // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
             ret = stringToUTF8OnStack(str);
           }
           return ret;
@@ -1203,7 +1148,6 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
   
       function convertReturnValue(ret) {
         if (returnType === 'string') {
-          
           return UTF8ToString(ret);
         }
         if (returnType === 'boolean') return Boolean(ret);
@@ -1275,13 +1219,23 @@ function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { 
       return ret;
     };
 
+// End JS library code
+
+var ASM_CONSTS = {
+  51716: () => { return performance.now(); },  
+ 51746: ($0) => { return performance.now() - $0; },  
+ 51781: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 51826: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 51868: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 51913: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 51955: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
+};
+function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { return await ulisp.wait_for_tick(); }); }
 var wasmImports = {
   /** @export */
   __assert_fail: ___assert_fail,
   /** @export */
   __asyncjs__wait_for_tick,
-  /** @export */
-  _emscripten_memcpy_js: __emscripten_memcpy_js,
   /** @export */
   _emscripten_throw_longjmp: __emscripten_throw_longjmp,
   /** @export */
@@ -1301,27 +1255,27 @@ var wasmImports = {
   /** @export */
   invoke_vii
 };
-var wasmExports = createWasm();
-var ___wasm_call_ctors = () => (___wasm_call_ctors = wasmExports['__wasm_call_ctors'])();
-var _setup = Module['_setup'] = () => (_setup = Module['_setup'] = wasmExports['setup'])();
-var _evaluate = Module['_evaluate'] = (a0) => (_evaluate = Module['_evaluate'] = wasmExports['evaluate'])(a0);
-var _malloc = (a0) => (_malloc = wasmExports['malloc'])(a0);
-var _free = Module['_free'] = (a0) => (_free = Module['_free'] = wasmExports['free'])(a0);
-var _setThrew = (a0, a1) => (_setThrew = wasmExports['setThrew'])(a0, a1);
-var __emscripten_stack_restore = (a0) => (__emscripten_stack_restore = wasmExports['_emscripten_stack_restore'])(a0);
-var __emscripten_stack_alloc = (a0) => (__emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'])(a0);
-var _emscripten_stack_get_current = () => (_emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'])();
-var dynCall_vi = Module['dynCall_vi'] = (a0, a1) => (dynCall_vi = Module['dynCall_vi'] = wasmExports['dynCall_vi'])(a0, a1);
-var dynCall_i = Module['dynCall_i'] = (a0) => (dynCall_i = Module['dynCall_i'] = wasmExports['dynCall_i'])(a0);
-var dynCall_vii = Module['dynCall_vii'] = (a0, a1, a2) => (dynCall_vii = Module['dynCall_vii'] = wasmExports['dynCall_vii'])(a0, a1, a2);
-var dynCall_ii = Module['dynCall_ii'] = (a0, a1) => (dynCall_ii = Module['dynCall_ii'] = wasmExports['dynCall_ii'])(a0, a1);
-var dynCall_iii = Module['dynCall_iii'] = (a0, a1, a2) => (dynCall_iii = Module['dynCall_iii'] = wasmExports['dynCall_iii'])(a0, a1, a2);
-var dynCall_iiii = Module['dynCall_iiii'] = (a0, a1, a2, a3) => (dynCall_iiii = Module['dynCall_iiii'] = wasmExports['dynCall_iiii'])(a0, a1, a2, a3);
-var dynCall_jiji = Module['dynCall_jiji'] = (a0, a1, a2, a3, a4) => (dynCall_jiji = Module['dynCall_jiji'] = wasmExports['dynCall_jiji'])(a0, a1, a2, a3, a4);
-var _asyncify_start_unwind = (a0) => (_asyncify_start_unwind = wasmExports['asyncify_start_unwind'])(a0);
-var _asyncify_stop_unwind = () => (_asyncify_stop_unwind = wasmExports['asyncify_stop_unwind'])();
-var _asyncify_start_rewind = (a0) => (_asyncify_start_rewind = wasmExports['asyncify_start_rewind'])(a0);
-var _asyncify_stop_rewind = () => (_asyncify_stop_rewind = wasmExports['asyncify_stop_rewind'])();
+var wasmExports = await createWasm();
+var ___wasm_call_ctors = wasmExports['__wasm_call_ctors']
+var _setup = Module['_setup'] = wasmExports['setup']
+var _evaluate = Module['_evaluate'] = wasmExports['evaluate']
+var _malloc = wasmExports['malloc']
+var _free = Module['_free'] = wasmExports['free']
+var _setThrew = wasmExports['setThrew']
+var __emscripten_stack_restore = wasmExports['_emscripten_stack_restore']
+var __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc']
+var _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current']
+var dynCall_vi = Module['dynCall_vi'] = wasmExports['dynCall_vi']
+var dynCall_i = Module['dynCall_i'] = wasmExports['dynCall_i']
+var dynCall_vii = Module['dynCall_vii'] = wasmExports['dynCall_vii']
+var dynCall_ii = Module['dynCall_ii'] = wasmExports['dynCall_ii']
+var dynCall_iii = Module['dynCall_iii'] = wasmExports['dynCall_iii']
+var dynCall_iiii = Module['dynCall_iiii'] = wasmExports['dynCall_iiii']
+var dynCall_jiji = Module['dynCall_jiji'] = wasmExports['dynCall_jiji']
+var _asyncify_start_unwind = wasmExports['asyncify_start_unwind']
+var _asyncify_stop_unwind = wasmExports['asyncify_stop_unwind']
+var _asyncify_start_rewind = wasmExports['asyncify_start_rewind']
+var _asyncify_stop_rewind = wasmExports['asyncify_stop_rewind']
 
 function invoke_vii(index,a1,a2) {
   var sp = stackSave();
@@ -1376,17 +1330,10 @@ Module['UTF8ToString'] = UTF8ToString;
 Module['stringToNewUTF8'] = stringToNewUTF8;
 
 
-var calledRun;
-
-dependenciesFulfilled = function runCaller() {
-  // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-  if (!calledRun) run();
-  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
-};
-
 function run() {
 
   if (runDependencies > 0) {
+    dependenciesFulfilled = run;
     return;
   }
 
@@ -1394,14 +1341,13 @@ function run() {
 
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
+    dependenciesFulfilled = run;
     return;
   }
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
-    if (calledRun) return;
-    calledRun = true;
     Module['calledRun'] = true;
 
     if (ABORT) return;
@@ -1416,10 +1362,8 @@ function run() {
 
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
-    setTimeout(function() {
-      setTimeout(function() {
-        Module['setStatus']('');
-      }, 1);
+    setTimeout(() => {
+      setTimeout(() => Module['setStatus'](''), 1);
       doRun();
     }, 1);
   } else
@@ -1456,7 +1400,10 @@ moduleRtn = readyPromise;
 }
 );
 })();
-if (typeof exports === 'object' && typeof module === 'object')
+if (typeof exports === 'object' && typeof module === 'object') {
   module.exports = createUlispModule;
-else if (typeof define === 'function' && define['amd'])
+  // This default export looks redundant, but it allows TS to import this
+  // commonjs style module.
+  module.exports.default = createUlispModule;
+} else if (typeof define === 'function' && define['amd'])
   define([], () => createUlispModule);

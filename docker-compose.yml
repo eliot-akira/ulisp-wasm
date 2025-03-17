@@ -1,0 +1,8 @@
+version: '3'
+services:
+  builder:
+    image: emscripten/emsdk:4.0.5
+    volumes:
+      - ./src:/app/src
+      - ./docs:/app/docs
+    working_dir: /app

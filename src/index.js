@@ -1,9 +1,9 @@
 const $console = document.getElementById('console')
 const canvas = document.getElementById('canvas')
 
-console.log('createUlispModule', createUlispModule)
-
 ;(async () => {
+
+  const { createUlispModule } = window
 
   const Module = await createUlispModule({
 
@@ -190,9 +190,12 @@ async function run(code) {
   const ptr = Module.stringToNewUTF8(code)
   Module._evaluate(ptr)
 
+  try {
   // Call tick until done
-
-  while (await tick()) {}
+  while (await tick()) {}    
+  } catch(e) {
+    console.log(e)
+  }
 
   // Free the memory
   Module._free(ptr)

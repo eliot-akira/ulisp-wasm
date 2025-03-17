@@ -1,25 +1,38 @@
-# uLisp WebAssembly
+# uLisp Web
 
-[uLisp](http://www.ulisp.com) is a Lisp programming language for embedded devices. This project `ulisp-wasm` is a WebAssembly port of uLisp to run on the browser and server side.
+[uLisp](http://www.ulisp.com) is a programming language for embedded devices. This project `ulisp-web` is an unofficial port of uLisp to WebAssembly that runs in the browser and on server side.
 
-See [the Playground page](https://eliot-akira.github.io/ulisp-wasm/).
+See [the Playground page](https://eliot-akira.github.io/ulisp-web/).
 
-## Features
+> Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host.
 
-- [x] Based on [uLisp ESP32](https://github.com/technoblogy/ulisp-esp) and the [BL602 RISC-V fork](https://github.com/lupyuen/ulisp-bl602)
+## Changes
+
+Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp ESP32](https://github.com/technoblogy/ulisp-esp), [BL602 RISC-V fork](https://github.com/lupyuen/ulisp-bl602)
+
 - [x] Rewrite to upgrade from uLisp 3.6 to 4.6b
+- [x] Load code and step through each instruction
+- [x] Merge changes from uLisp 4.7
 - [ ] Replace inputs and outputs with emulator
-- [ ] A way to load code, then step through each instruction
+  - [ ] Analog port read/write
+  - [ ] Digital port read/write
+  - [ ] EPROM read/write
+  - [ ] Load/save/autorun image
+  - [ ] I2C interface
+  - [ ] Serial interface
+  - [ ] SD card
+  - [ ] Graphics
+  - [ ] Audio
+- [x] REPL (read-eval-print loop)
 - [ ] Code editor
 - [ ] Canvas
-- [ ] Replace platform-agnostic code from upstream [uLisp builder](https://github.com/technoblogy/ulisp-builder)
 
 ## Develop
 
 Prerequisites:
 
-- `emcc` from [Emscripten SDK](https://github.com/emscripten-core/emsdk) - See [install options](https://emscripten.org/docs/getting_started/downloads.html)
-- [Bun](https://bun.sh/) for the frontend app and bundler
+- [Docker](https://docs.docker.com/engine/) to run Emscripten in a container; or directly use `emcc` from [Emscripten SDK](https://github.com/emscripten-core/emsdk) ([install options](https://emscripten.org/docs/getting_started/downloads.html))
+- [Bun](https://bun.sh/)
 
 ### Install
 
@@ -39,7 +52,7 @@ bun run start
 
 ### Build
 
-Build frontend app as static site for production with minified assets.
+Build for production with minified assets.
 
 ```sh
 bun run build
@@ -56,7 +69,7 @@ From [documentation of uLisp builder](http://www.ulisp.com/show?3F07)
 - `prettyprint.lisp` - the prettyprinter
 - `postscript.lisp` - the definitions for the function table lookup, eval, read, print, and the REPL
 
-Platform-specific features
+### Platform-specific features
 
 - The source file preamble
 - The platform-specific settings: WORKSPACESIZE, etc.
@@ -64,7 +77,54 @@ Platform-specific features
 - The analogread and analogwrite I/O pin definitions
 - Definitions for note, sleep, and keywords
 
+### Builder steps
+
+From `ulisp-builder/build.lisp`
+
+- Header
+- Workspace
+- Macros
+- Constants
+- Typedefs
+- Enum declarations
+- Global variables
+- Error handling
+- Setup workspace
+- Make objects
+- Utilities
+- Feature list
+- Garbage collection
+- Compact image
+- Make filename
+- Save image
+- Tracing
+- Helper functions
+- Association lists
+- Array utilities
+- String utilities
+- Closures
+- In place
+- I2C interface
+- Stream interface
+- Note
+- Sleep
+- Pretty print
+- Assembler
+- Interrupts
+- Function definitions
+- Symbol names
+- Documentation strings
+- Built-in symbol lookup table
+- Eval
+- Print functions
+- Read functions
+- Setup 1 & 2
+- REPL
+- Loop
+
 ## Reference
 
+- [Implementation](http://www.ulisp.com/show?1AWG)
 - [Porting uLisp to a new platform](http://www.ulisp.com/show?2JZO)
+- [Benchmarks](http://www.ulisp.com/show?1EO1)
 - [Web Serial API](https://wicg.github.io/serial/)
