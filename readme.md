@@ -24,7 +24,7 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
   - [ ] Graphics
   - [ ] Audio
 - [x] REPL (read-eval-print loop)
-- [ ] Code editor
+- [x] Code editor with syntax highlight
 - [ ] Canvas
 
 ## Develop

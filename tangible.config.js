@@ -6,7 +6,7 @@ export default {
       react: 'preact'
     },
     {
-      src: 'src/index.js',
+      src: 'src/index.ts',
       dest: 'docs/script.js'
     },
     {

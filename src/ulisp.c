@@ -4097,7 +4097,7 @@ object *fn_random (object *args, object *env) {
 #else
   if (integerp(arg)) return number(random(arg->integer));
 #endif
-  else if (floatp(arg)) return makefloat((float)rand()/(float)(RAND_MAX/(arg->single_float)));
+  else if (floatp(arg)) return makefloat((float)rand()/((float)RAND_MAX/(arg->single_float)));
   else error(notanumber, arg);
   return nil;
 }
@@ -7873,7 +7873,8 @@ void loadfromlibrary (object *env) {
 // For line editor
 const int TerminalWidth = 80;
 volatile int WritePtr = 0, ReadPtr = 0, LastWritePtr = 0;
-const int KybdBufSize = 333; // 42*8 - 3
+// const int KybdBufSize = 333; // 42*8 - 3
+#define KybdBufSize 333
 char KybdBuf[KybdBufSize];
 volatile uint8_t KybdAvailable = 0;
 

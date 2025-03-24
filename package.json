@@ -15,10 +15,19 @@
     "update": "git-subrepo pull builder"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.8.0",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/lint": "^6.8.4",
+    "@codemirror/merge": "^6.10.0",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.4",
+    "@lezer/lr": "^1.4.2",
     "@preact/signals": "^2.0.1",
+    "codemirror": "^6.0.1",
     "preact": "^10.25.4"
   },
   "devDependencies": {
+    "@nextjournal/lang-clojure": "^1.0.0",
     "@tangible/git-subrepo": "^1.0.1",
     "@tangible/roller": "^2.1.4",
     "chokidar-cli": "^3.0.0",
