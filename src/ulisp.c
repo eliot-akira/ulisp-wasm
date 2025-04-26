@@ -1,5 +1,6 @@
 /**
  * ulisp-web - uLisp ported to WebAssembly
+ *
  * Based on uLisp - http://www.ulisp.com
  * - uLisp ESP 4.7a https://github.com/technoblogy/ulisp-esp
  * - uLisp Builder 4.7  https://github.com/technoblogy/ulisp-builder
@@ -65,8 +66,8 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 
 #if defined(__EMSCRIPTEN__)
 
-#define WORKSPACESIZE (9216-SDSIZE)            /* Objects (8*bytes) */
-#define MAX_STACK 7000
+#define WORKSPACESIZE (65536-SDSIZE)            /* Objects (8*bytes) Commonly 9216 + PSRAM 250000~1000000 */
+#define MAX_STACK 8000                          /* Stack, typically 6500~8000 for ESP32 */
 #define SDCARD_SS_PIN 13
 #define LED_BUILTIN 13
 // #define EEPROMSIZE        4096              /* Bytes available for EEPROM */
@@ -342,6 +343,8 @@ void pinMode(int pin, int mode) {
     ulisp.call(UTF8ToString($0), $1, $2);
   }, "pinMode", pin, mode);  
 }
+
+
 
 #endif
 // ***************************************************************
@@ -7996,14 +7999,21 @@ int gserial () {
     LastChar = 0;
     return temp;
   }
-#if defined(__EMSCRIPTEN__)
+
+  #if defined(__EMSCRIPTEN__)
+
   //  Return next char from the buffer
   if (input_pos >= input_len) {
     //  No more chars to read
     LastChar = 0;
-    loop_done = true; // TODO: Stop
+
+    // Stop
+    loop_done = true;
+    yield_loop();
+
     return '\n';
   }
+
   return input_buf[input_pos++];
 
 #elif defined(lineeditor)
@@ -8250,7 +8260,9 @@ void setup () {
 */
 void repl (object *env) {
   for (;;) {
+
     if (loop_done) return;
+
     // randomSeed(micros()); // TODO:
     #if defined(printfreespace)
     if (!tstflag(NOECHO)) gc(NULL, env);
@@ -8260,12 +8272,12 @@ void repl (object *env) {
       pfstring(" : ", pserial);
       pint(BreakLevel, pserial);
     }
-    // pserial('>'); pserial(' '); // TODO:
+    // pserial('>'); pserial(' ');
     Context = NIL;
 
     object *line = read(gserial);
-    if (loop_done) return; // TODO:
-
+    if (loop_done) return;
+    
     // Break handling
     if (BreakLevel) {
       if (line == nil || line == bsymbol(COLONC)) {
@@ -8333,7 +8345,7 @@ EM_ASYNC_JS(int, wait_for_tick, (), {
 // Called by eval() and sp_loop()
 void yield_loop(void) {
   // Wait until host calls next tick
-  if (wait_for_tick()) {
+  if (loop_done || wait_for_tick()) {
     errorend();
   }
 }
