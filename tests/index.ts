@@ -1,0 +1,143 @@
+import createUlisp from '../node/ulisp.js'
+import { test, is, run as runTests } from 'testra'
+
+test('create', async () => {
+  is(true, createUlisp instanceof Function, 'create is a function')
+
+  let result: any = createUlisp()
+
+  is(true, result instanceof Promise, 'create returns a promise')
+
+  result = await result
+
+  is(true, result instanceof Object, 'promise resolves to module instance')
+
+  let printBuffer = ''
+
+  const Module = await createUlisp({
+    print(...args) {
+      // console.log(...args)
+
+      printBuffer += args.reduce((result, arg) => {
+        result += arg // Assume string
+        return result
+      }, '')
+    },
+    setStatus: function (text) {
+      // Status from Emscripten module
+      // if (text) {
+      //   console.log('status', text)
+      // }
+    },
+  })
+
+  Module._setup()
+
+  const tickQueue: Function[] = []
+  let shouldStop = false
+
+  /**
+   * TODO: Module expects a global variable `ulisp`. Move them as callbacks
+   * passed to createUlisp() above.
+   */
+  const ulisp = (globalThis.ulisp = {
+    run,
+    // Called from Module
+    call(command, ...args) {
+      console.log('ulisp.call', command, ...args)
+      switch (command) {
+        case 'analogRead':
+          return args[0] / 2
+          break
+        case 'analogWrite':
+          break
+        case 'digitalRead':
+          return args[0]
+          break
+        case 'digitalWrite':
+          break
+      }
+    },
+    escape() {
+      // Return 1 to stop the runtime
+      return 0
+    },
+    wait_for_tick() {
+      if (shouldStop) return 1
+      return new Promise((resolve, reject) => {
+        tickQueue.push(resolve)
+      })
+    },
+    stop() {
+      shouldStop = true
+    },
+  })
+
+  async function tick() {
+    const callback = tickQueue.shift()
+    if (!callback) return false
+
+    callback(shouldStop ? 1 : 0)
+    await new Promise((resolve, reject) => {
+      setImmediate(resolve)
+    })
+
+    return tickQueue.length
+  }
+
+  async function run(code) {
+    // Module.print('\n> ' + code + '\n')
+
+    shouldStop = false
+
+    //  Allocate memory for the string and create a pointer
+    const ptr = Module.stringToNewUTF8(code)
+
+    printBuffer = ''
+    Module._evaluate(ptr)
+
+    let i = 0
+    const maxTicks = 9999
+
+    try {
+      // Call tick until done
+      while (await tick()) {
+        if (i++ > maxTicks) {
+          console.log('Max ticks exceeded', maxTicks)
+          shouldStop = true
+          break
+        }
+      }
+    } catch (e) {
+      console.log(e)
+    }
+
+    // Free the memory
+    Module._free(ptr)
+
+    let result = printBuffer.trimEnd()
+    printBuffer = ''
+    return result
+  }
+
+  let code
+
+    code = `(+ 1 2)
+  `
+    result = await run(code)
+    console.log(result)
+    is('3', result, code)
+
+  code = `(progn
+(defun fib (n)
+(if (< n 3) 1
+  (+ (fib (- n 1)) (fib (- n 2)))))
+(fib 5))
+`
+
+  result = await run(code)
+  is('5', result, '(fib 5)')
+
+})
+
+runTests()

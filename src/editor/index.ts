@@ -16,7 +16,7 @@ export function init(parent: HTMLElement, doc: string) {
     state: EditorState.create({
       doc,
       extensions: [
-        indentUnit.of(' '),
+        indentUnit.of('  '),
         basicSetup,
         clojure(),
         parinferExtension({

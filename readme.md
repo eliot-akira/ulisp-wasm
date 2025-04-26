@@ -1,10 +1,10 @@
 # uLisp Web
 
-[uLisp](http://www.ulisp.com) is a programming language for embedded devices. This project `ulisp-web` is an unofficial port of uLisp to WebAssembly that runs in the browser and on server side.
+[uLisp](http://www.ulisp.com) is a programming language for microcontrollers and embedded devices. This project `ulisp-web` is an unofficial port of uLisp to WebAssembly that runs in the browser and on server side.
 
 See [the Playground page](https://eliot-akira.github.io/ulisp-web/).
 
-> Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host.
+> Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host on every instruction.
 
 ## Changes
 
@@ -26,6 +26,8 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
 - [x] REPL (read-eval-print loop)
 - [x] Code editor with syntax highlight
 - [ ] Canvas
+- [x] Run on JavaScript runtimes: Node, Bun, Deno
+- [ ] Run on WASM runtimes: wasmtime, etc. - Needs WASI?
 
 ## Develop
 
