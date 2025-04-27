@@ -1703,6 +1703,7 @@ void pslice (object *array, int size, int slice, object *dims, pfun_t pfun, bool
         (index & (sizeof(int)==4 ? 0x1F : 0x0F)) & 1, pfun);
       else printobject(*arrayref(array, index, size), pfun);
     } else { pfun('('); pslice(array, size, index, cdr(dims), pfun, bitp); pfun(')'); }
+    testescape();
   }
 }
 
@@ -2353,6 +2354,7 @@ object *dobody (object *args, object *env, bool star) {
   protect(head);
   object *ptr = head;
   object *newenv = env;
+  protect(newenv);
   while (varlist != NULL) {
     object *varform = first(varlist);
     object *var, *init = NULL, *step = NULL;
@@ -2367,7 +2369,9 @@ object *dobody (object *args, object *env, bool star) {
       }
     }  
     object *pair = cons(var, init);
+    unprotect(); // newenv
     push(pair, newenv);
+    protect(newenv);
     if (star) env = newenv;
     object *cell = cons(cons(step, pair), NULL);
     cdr(ptr) = cell; ptr = cdr(ptr);
@@ -2379,9 +2383,11 @@ object *dobody (object *args, object *env, bool star) {
   while (eval(endtest, env) == NULL) {
     object *forms = cddr(args);
     while (forms != NULL) {
-    object *result = eval(car(forms), env);
+      object *result = eval(car(forms), env);
       if (tstflag(RETURNFLAG)) {
         clrflag(RETURNFLAG);
+        unprotect(); // newenv
+        unprotect(); // head
         return result;
       }
       forms = cdr(forms);
@@ -2409,7 +2415,8 @@ object *dobody (object *args, object *env, bool star) {
       count--;
     }
   }
-  unprotect();
+  unprotect(); // newenv
+  unprotect(); // head
   return eval(tf_progn(results, env), env);
 }
 
@@ -2520,7 +2527,7 @@ void checkanalogwrite (int pin) {
 #elif defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) || defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2_TFT) || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
   || defined(ARDUINO_FEATHERS2) || defined(ARDUINO_ESP32S2_DEV)
   if (!(pin>=17 && pin<=18)) error("invalid pin", number(pin));
-#elif defined(ARDUINO_ESP32C3_DEV) || defined(ARDUINO_ESP32S3_DEV) || defined(ARDUINO_ADAFRUIT_QTPY_ESP32C3)
+#else
   error2(ANALOGWRITE, "not supported");
 #endif
 }
@@ -2653,6 +2660,7 @@ void superprint (object *form, int lm, pfun_t pfun) {
       form = cdr(form);
     }
     pfun(')');
+    testescape();
   }
 }
 
@@ -3155,7 +3163,7 @@ object *sp_withi2c (object *args, object *env) {
 
   // Top bit of address is I2C port
   TwoWire *port = &Wire;
-  #if defined(ULISP_I2C1)
+  #if ULISP_HOWMANYI2C == 2
   if (address > 127) port = &Wire1;
   #endif
   I2Cinit(port, 1); // Pullups
@@ -3667,8 +3675,8 @@ object *fn_copylist (object *args, object *env) {
   if (!listp(arg)) error(notalist, arg);
   object *result = cons(NULL, NULL);
   object *ptr = result;
-  while (arg != NULL) {
-    cdr(ptr) = cons(car(arg), NULL); 
+  while (consp(arg)) {
+    cdr(ptr) = cons(car(arg), cdr(arg));
     ptr = cdr(ptr); arg = cdr(arg);
   }
   return cdr(result);
@@ -4618,8 +4626,10 @@ object *fn_stringgreatereq (object *args, object *env) {
   Destructively sorts list according to the test function, using an insertion sort, and returns the sorted list.
 */
 object *fn_sort (object *args, object *env) {
-  if (first(args) == NULL) return nil;
-  object *list = cons(nil,first(args));
+  object *arg = first(args);
+  if (!listp(arg)) error(notalist, arg);
+  if (arg == NULL) return nil;
+  object *list = cons(nil, arg);
   protect(list);
   object *predicate = second(args);
   object *compare = cons(NULL, cons(NULL, NULL));
@@ -5046,9 +5056,11 @@ object *fn_readline (object *args, object *env) {
 */
 object *fn_writebyte (object *args, object *env) {
   (void) env;
-  int value = checkinteger(first(args));
+  int c = checkinteger(first(args));
   pfun_t pfun = pstreamfun(cdr(args));
   (pfun)(value);
+  if (c == '\n' && pfun == pserial) Serial.write('\n');
+  else (pfun)(c);
   return nil;
 }
 
@@ -5107,7 +5119,7 @@ object *fn_restarti2c (object *args, object *env) {
   if (stream>>8 != I2CSTREAM) error2("not an i2c stream");
   TwoWire *port;
   if (address < 128) port = &Wire;
-  #if defined(ULISP_I2C1)
+  #if ULISP_HOWMANYI2C == 2
   else port = &Wire1;
   #endif
   return I2Crestart(port, address & 0x7F, read) ? tee : nil;
@@ -5452,7 +5464,7 @@ object *fn_format (object *args, object *env) {
   object *save = NULL;
   args = cddr(args);
   int len = stringlength(formatstr);
-  uint8_t n = 0, width = 0, w, bra = 0;
+  uint16_t n = 0, width = 0, w, bra = 0;
   char pad = ' ';
   bool tilde = false, mute = false, comma = false, quote = false;
   while (n < len) {
@@ -6485,8 +6497,12 @@ const char doc21[] = "(eq item item)\n"
 "or point to the same cons, and returns t or nil as appropriate.";
 const char doc22[] = "(car list)\n"
 "Returns the first item in a list.";
+const char doc23[] = "(first list)\n"
+"Returns the first item in a list. Equivalent to car.";
 const char doc24[] = "(cdr list)\n"
 "Returns a list with the first item removed.";
+const char doc25[] = "(rest list)\n"
+"Returns a list with the first item removed. Equivalent to cdr.";
 const char doc26[] = "(nth number list)\n"
 "Returns the nth item in list, counting from zero.";
 const char doc27[] = "(aref array index [index*])\n"
@@ -6590,6 +6606,8 @@ const char doc62[] = "(and item*)\n"
 "Evaluates its arguments until one returns nil, and returns the last value.";
 const char doc63[] = "(not item)\n"
 "Returns t if its argument is nil, or nil otherwise. Equivalent to null.";
+const char doc64[] = "(null list)\n"
+"Returns t if its argument is nil, or nil otherwise. Equivalent to not.";
 const char doc65[] = "(cons item item)\n"
 "If the second argument is a list, cons returns a new list with item added to the front of the list.\n"
 "If the second argument isn't a list cons returns a dotted pair.";
@@ -6616,6 +6634,8 @@ const char doc75[] = "(equal item item)\n"
 "or point to the same cons, and returns t or nil as appropriate.";
 const char doc76[] = "(caar list)";
 const char doc77[] = "(cadr list)";
+const char doc78[] = "(second list)\n"
+"Returns the second item in a list. Equivalent to cadr.";
 const char doc79[] = "(cdar list)\n"
 "Equivalent to (cdr (car list)).";
 const char doc80[] = "(cddr list)\n"
@@ -6628,6 +6648,8 @@ const char doc83[] = "(cadar list)\n"
 "Equivalent to (car (cdr (car list))).";
 const char doc84[] = "(caddr list)\n"
 "Equivalent to (car (cdr (cdr list))).";
+const char doc85[] = "(third list)\n"
+"Returns the third item in a list. Equivalent to caddr.";
 const char doc86[] = "(cdaar list)\n"
 "Equivalent to (cdar (car (car list))).";
 const char doc87[] = "(cdadr list)\n"
@@ -7035,9 +7057,9 @@ const tbl_entry_t lookup_table[] = {
   { string20, sp_defvar, 0313, doc20 },
   { string21, fn_eq, 0222, doc21 },
   { string22, fn_car, 0211, doc22 },
-  { string23, fn_car, 0211, NULL },
+  { string23, fn_car, 0211, doc23 },
   { string24, fn_cdr, 0211, doc24 },
-  { string25, fn_cdr, 0211, NULL },
+  { string25, fn_cdr, 0211, doc25 },
   { string26, fn_nth, 0222, doc26 },
   { string27, fn_aref, 0227, doc27 },
   { string28, fn_char, 0222, doc28 },
@@ -7076,7 +7098,7 @@ const tbl_entry_t lookup_table[] = {
   { string61, tf_case, 0117, doc61 },
   { string62, tf_and, 0107, doc62 },
   { string63, fn_not, 0211, doc63 },
-  { string64, fn_not, 0211, NULL },
+  { string64, fn_not, 0211, doc64 },
   { string65, fn_cons, 0222, doc65 },
   { string66, fn_atom, 0211, doc66 },
   { string67, fn_listp, 0211, doc67 },
@@ -7090,14 +7112,14 @@ const tbl_entry_t lookup_table[] = {
   { string75, fn_equal, 0222, doc75 },
   { string76, fn_caar, 0211, doc76 },
   { string77, fn_cadr, 0211, doc77 },
-  { string78, fn_cadr, 0211, NULL },
+  { string78, fn_cadr, 0211, doc78 },
   { string79, fn_cdar, 0211, doc79 },
   { string80, fn_cddr, 0211, doc80 },
   { string81, fn_caaar, 0211, doc81 },
   { string82, fn_caadr, 0211, doc82 },
   { string83, fn_cadar, 0211, doc83 },
   { string84, fn_caddr, 0211, doc84 },
-  { string85, fn_caddr, 0211, NULL },
+  { string85, fn_caddr, 0211, doc85 },
   { string86, fn_cdaar, 0211, doc86 },
   { string87, fn_cdadr, 0211, doc87 },
   { string88, fn_cddar, 0211, doc88 },
@@ -7344,6 +7366,9 @@ bool findsubstring (char *part, builtin_t name) {
 #if !defined(__EMSCRIPTEN__)
 // Replaced by yield_loop()
 void testescape () {
+  static uint16_t n;
+  if (millis()-n < 500) return;
+  n = millis();
   if (Serial.available() && Serial.read() == '~') error2("escape!");
 }
 #endif
@@ -7386,7 +7411,6 @@ void backtrace (symbol_t name) {
 */
 object *eval (object *form, object *env) {
   bool stackpos;
-  static unsigned long start = 0;
   int TC=0;
   EVAL:
 #if defined(__EMSCRIPTEN__)
@@ -7797,6 +7821,7 @@ void plist (object *form, pfun_t pfun) {
   while (form != NULL && listp(form)) {
     pfun(' ');
     printobject(car(form), pfun);
+    testescape();
     form = cdr(form);
   }
   if (form != NULL) {
@@ -8249,7 +8274,7 @@ void setup () {
   initenv();
   initsleep();
   initgfx();
-  pfstring(PSTR("uLisp 4.7 "), pserial); pln(pserial);
+  pfstring(PSTR("uLisp 4.7c "), pserial); pln(pserial);
   millis(); // Start time
 }
 
