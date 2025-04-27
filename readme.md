@@ -4,7 +4,7 @@
 
 See [the Playground page](https://eliot-akira.github.io/ulisp-web/).
 
-> Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host on every instruction.
+Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host on every instruction.
 
 ## Changes
 
@@ -13,21 +13,28 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
 - [x] Rewrite to upgrade from uLisp 3.6 to 4.6b
 - [x] Load code and step through each instruction
 - [x] Merge changes from uLisp 4.7
-- [ ] Replace inputs and outputs with emulator
+- [ ] Replace inputs and outputs with host events (listen and emit) for emulation
   - [ ] Analog port read/write
   - [ ] Digital port read/write
+  - [ ] Serial interface
+  - [ ] Graphics
+  - [ ] Audio
   - [ ] EPROM read/write
   - [ ] Load/save/autorun image
   - [ ] I2C interface
-  - [ ] Serial interface
   - [ ] SD card
-  - [ ] Graphics
-  - [ ] Audio
-- [x] REPL (read-eval-print loop)
+- [x] REPL (read-eval-print loop) in web interface
+- [ ] REPL on server side
+- [ ] CLI on server side to run uLisp programs
+- [ ] REPL and line editor in uLsip using serial interface
 - [x] Code editor with syntax highlight
-- [ ] Canvas
+- [x] Run in the browser
 - [x] Run on JavaScript runtimes: Node, Bun, Deno
 - [ ] Run on WASM runtimes: wasmtime, etc. - Needs WASI?
+- [ ] Documentation
+- [ ] Canvas
+- [ ] SVG
+- [ ] Web Audio
 
 ## Develop
 
