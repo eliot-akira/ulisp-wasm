@@ -90,6 +90,9 @@ test('create', async () => {
 
     shouldStop = false
 
+    // Wrap to run multiple expressions, returning the last value
+    code = `(progn ${code})`
+
     //  Allocate memory for the string and create a pointer
     const ptr = Module.stringToNewUTF8(code)
 
@@ -122,17 +125,15 @@ test('create', async () => {
 
   let code
 
-    code = `(+ 1 2)
-  `
+    code = `(+ 1 2)`
     result = await run(code)
-    console.log(result)
     is('3', result, code)
 
-  code = `(progn
+  code = `
 (defun fib (n)
 (if (< n 3) 1
   (+ (fib (- n 1)) (fib (- n 2)))))
-(fib 5))
+(fib 5)
 `
 
   result = await run(code)
