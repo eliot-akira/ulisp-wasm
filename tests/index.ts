@@ -42,7 +42,7 @@ test('create', async () => {
    */
   const ulisp = (globalThis.ulisp = {
     run,
-    // Called from Module
+    // Called from Lisp code running on WASM
     call(command, ...args) {
       console.log('ulisp.call', command, ...args)
       switch (command) {
@@ -62,6 +62,7 @@ test('create', async () => {
       // Return 1 to stop the runtime
       return 0
     },
+    // Called from WASM evaluate() after every instruction step
     wait_for_tick() {
       if (shouldStop) return 1
       return new Promise((resolve, reject) => {

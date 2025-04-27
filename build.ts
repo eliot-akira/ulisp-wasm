@@ -5,7 +5,7 @@ const [command, ...args] = process.argv.slice(2)
 switch (command) {
   case 'patch':
     /**
-     * TODO: Patch output of Emscripten in node/ulisp.js
+     * HACK: Patch output of Emscripten in node/ulisp.js
      *
      * - Replace require() with await import
      * - Replace module.exports with export default

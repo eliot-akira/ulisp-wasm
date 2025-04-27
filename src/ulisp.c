@@ -8272,12 +8272,11 @@ void repl (object *env) {
       pfstring(" : ", pserial);
       pint(BreakLevel, pserial);
     }
-    // pserial('>'); pserial(' ');
+    // pserial('>'); pserial(' '); // TODO:
     Context = NIL;
 
     object *line = read(gserial);
-    if (loop_done) return;
-    
+
     // Break handling
     if (BreakLevel) {
       if (line == nil || line == bsymbol(COLONC)) {

@@ -1,5 +1,5 @@
 {
-  "name": "ulisp-web",
+  "name": "ulisp-wasm",
   "version": "4.7.0",
   "type": "module",
   "scripts": {
