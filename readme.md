@@ -2,7 +2,7 @@
 
 [uLisp](http://www.ulisp.com) is a programming language for microcontrollers and embedded devices. This project `ulisp-web` is an unofficial port of uLisp to WebAssembly that runs in the browser and on server side.
 
-See [the Playground page](https://eliot-akira.github.io/ulisp-web/).
+See [the Playground page](https://eliot-akira.github.io/ulisp-wasm/).
 
 Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host on every instruction.
 
