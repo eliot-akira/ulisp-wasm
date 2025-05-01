@@ -3,6 +3,20 @@ import * as demoEditor from './editor/index.ts'
 const $console = document.getElementById('console')
 const canvas = document.getElementById('canvas')
 
+function consoleLine(text: string, isHtml = false) {
+  if (isHtml) {
+    $console.innerHTML += text + '<br>'
+  } else {
+    $console.innerText += text + '\n'
+  }
+
+  $console.scrollTop = $console.scrollHeight // focus on bottom
+}
+
+function consoleLineHtml(text: string) {
+  return consoleLine(text, true)
+}
+
 ;(async () => {
   const { createUlispModule } = window
 
@@ -10,7 +24,7 @@ const canvas = document.getElementById('canvas')
     print: (function () {
       if (!$console) return
 
-      $console.value = ''
+      // $console.innerText = ''
       return (...args) => {
         const text = args.join(' ')
         // These replacements are necessary if you render to raw HTML
@@ -31,7 +45,7 @@ const canvas = document.getElementById('canvas')
             }
           } else if (text) {
             console.log(text)
-            $console.innerText += text + '\n'
+            consoleLine(text)
             $console.scrollTop = $console.scrollHeight // focus on bottom
           }
         }
@@ -108,7 +122,7 @@ const canvas = document.getElementById('canvas')
     }
   }
 
-  const tickQueue = []
+  const tickQueue: ((value: unknown) => void)[] = []
   let shouldStop = false
 
   /// Wait for emscripten to be initialised
@@ -142,11 +156,18 @@ const canvas = document.getElementById('canvas')
       // Return 1 to stop the runtime
       return 0
     },
-    wait_for_tick() {
-      if (shouldStop) return 1
-      return new Promise((resolve, reject) => {
+    async wait_for_tick() {
+      return await new Promise((resolve, reject) => {
+        if (shouldStop) {
+          let callback
+          while ((callback = tickQueue.shift())) {
+            callback(1)
+          }
+          return resolve(1)
+        }
         tickQueue.push(resolve)
       })
+    return 0
     },
     stop() {
       shouldStop = true
@@ -199,6 +220,7 @@ const canvas = document.getElementById('canvas')
   }
 
   async function run(code) {
+
     Module.print('\n> ' + code + '\n')
 
     shouldStop = false
@@ -208,14 +230,17 @@ const canvas = document.getElementById('canvas')
     Module._evaluate(ptr)
 
     let i = 0
-    const maxTicks = 9999
+    const maxTicks = 999
 
     try {
       // Call tick until done
       while (await tick()) {
         console.log('tick')
         if (i++ > maxTicks) {
-          console.log('Max ticks exceeded', maxTick)
+          const message = `Maximum steps exceeded: ${maxTicks}`
+          console.log(message)
+          consoleLineHtml(`<span style="color:red">${message}</span>`)
+
           shouldStop = true
           break
         }

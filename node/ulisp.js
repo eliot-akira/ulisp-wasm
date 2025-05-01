@@ -1237,20 +1237,17 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  52132: () => { return performance.now(); },  
- 52162: ($0) => { return performance.now() - $0; },  
- 52197: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 52242: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 52284: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 52329: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 52371: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
+  52180: () => { return performance.now(); },  
+ 52210: ($0) => { return performance.now() - $0; },  
+ 52245: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52290: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 52332: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52377: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 52419: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
 };
-function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { return await ulisp.wait_for_tick(); }); }
 var wasmImports = {
   /** @export */
   __assert_fail: ___assert_fail,
-  /** @export */
-  __asyncjs__wait_for_tick,
   /** @export */
   _emscripten_throw_longjmp: __emscripten_throw_longjmp,
   /** @export */

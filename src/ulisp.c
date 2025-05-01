@@ -8348,10 +8348,26 @@ void ulisperror () {
   // client.stop(); // TODO:
 }
 
+int max_steps = 9999;
+int steps = 0;
+
+bool wait_for_tick() {
+  steps++;
+  if (steps <= max_steps) {
+    return false; // continue
+  }
+  pfstring("Error: Maximum steps exceeded: ", pserial);
+  printobject(number(max_steps), pserial);
+  pln(pserial);
+  errorend();
+  return true;
+}
+
 /*
   loop - Main execution loop
 */
 void loop () {
+  steps = 0;
   loop_done = false;
   if (!setjmp(toplevel_handler)) {
     #if defined(resetautorun)
@@ -8368,9 +8384,9 @@ void loop () {
 // WebAssembly ***************************************************************
 #if defined(__EMSCRIPTEN__)
 
-EM_ASYNC_JS(int, wait_for_tick, (), {
-  return await ulisp.wait_for_tick();
-});
+// EM_ASYNC_JS(int, wait_for_tick, (), {
+//   return await ulisp.wait_for_tick();
+// });
 
 // Yield evaluation loop and allow background tasks to run.
 // Called by eval() and sp_loop()
