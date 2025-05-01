@@ -1222,13 +1222,13 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  51716: () => { return performance.now(); },  
- 51746: ($0) => { return performance.now() - $0; },  
- 51781: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 51826: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 51868: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 51913: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 51955: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
+  52132: () => { return performance.now(); },  
+ 52162: ($0) => { return performance.now() - $0; },  
+ 52197: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52242: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 52284: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52329: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 52371: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__wait_for_tick() { return Asyncify.handleAsync(async () => { return await ulisp.wait_for_tick(); }); }
 var wasmImports = {

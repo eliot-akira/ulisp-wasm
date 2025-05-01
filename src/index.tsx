@@ -116,6 +116,10 @@ const canvas = document.getElementById('canvas')
   // Module.print('Init uLisp\n')
   Module._setup()
 
+  /**
+   * TODO: Module expects a global variable `ulisp`. Move them as callbacks
+   * passed to createUlisp() above.
+   */
   const ulisp = (window.ulisp = {
     run,
     // Called from Module
