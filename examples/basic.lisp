@@ -28,6 +28,12 @@
   (if (null (cdr lst)) lst
     (app (rev (cdr lst)) (cons (car lst) nil)))) 
 
+; Reduce a list
+
+(defun reduce* (fn lst &optional (initial 0))
+  (if (null lst) initial
+    (reduce* fn (cdr lst) (funcall fn initial (car lst)))))
+
 ; Largest Common Subsequence
 
 (defun lgr (a b)

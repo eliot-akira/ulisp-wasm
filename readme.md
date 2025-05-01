@@ -4,7 +4,7 @@
 
 See [the Playground page](https://eliot-akira.github.io/ulisp-wasm/).
 
-Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 9K of memory, and an async event loop to communicate and yield control to the host on every instruction.
+Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on WASM has its own process thread with 64K of memory, and an async event loop to communicate and yield control to the host on every instruction.
 
 ## Changes
 
@@ -13,28 +13,35 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
 - [x] Rewrite to upgrade from uLisp 3.6 to 4.6b
 - [x] Load code and step through each instruction
 - [x] Merge changes from uLisp 4.7
-- [ ] Replace inputs and outputs with host events (listen and emit) for emulation
+- [ ] Replace devices with host events for emulation
   - [ ] Analog port read/write
   - [ ] Digital port read/write
   - [ ] Serial interface
   - [ ] Graphics
   - [ ] Audio
+  - [ ] LittleFS
   - [ ] EPROM read/write
   - [ ] Load/save/autorun image
-  - [ ] I2C interface
+  - [ ] I2C interface - See function `with-i2c`
   - [ ] SD card
+  - [ ] [Extended RAM](http://www.ulisp.com/show?4UKH) - Define `BOARD_HAS_PSRAM`
 - [x] REPL (read-eval-print loop) in web interface
-- [ ] REPL on server side
-- [ ] CLI on server side to run uLisp programs
+- [x] REPL on server side
 - [ ] REPL and line editor in uLsip using serial interface
-- [x] Code editor with syntax highlight
+- [ ] CLI on server side to run uLisp programs
 - [x] Run in the browser
 - [x] Run on JavaScript runtimes: Node, Bun, Deno
-- [ ] Run on WASM runtimes: wasmtime, etc. - Needs WASI?
+- [x] Run on WASM runtimes with WASI support: [wasmtime](https://github.com/bytecodealliance/wasmtime), [Wasmer](https://wasmer.io/)
+- [ ] Standalone executable
+  - [WebAssembly Standalone](https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone)
+  - Or maybe [`wasm-micro-runtime`](https://github.com/bytecodealliance/wasm-micro-runtime)
 - [ ] Documentation
-- [ ] Canvas
-- [ ] SVG
-- [ ] Web Audio
+- [ ] Web interface
+  - [x] Code editor with syntax highlight
+  - [ ] Console output
+  - [ ] Canvas
+  - [ ] SVG
+  - [ ] Web Audio
 
 ## Develop
 
@@ -137,3 +144,84 @@ From `ulisp-builder/build.lisp`
 - [Porting uLisp to a new platform](http://www.ulisp.com/show?2JZO)
 - [Benchmarks](http://www.ulisp.com/show?1EO1)
 - [Web Serial API](https://wicg.github.io/serial/)
+
+- [Graphics display interface in Lisp](http://www.ulisp.com/show?23QU)
+- [Plotting to a colour TFT display](http://www.ulisp.com/show?2NSB)
+
+## Graphics
+
+uLisp has graphics methods that use the [Adafruit GFX Library](https://learn.adafruit.com/adafruit-gfx-graphics-library) with [TFT LCD](https://en.wikipedia.org/wiki/TFT_LCD) displays.
+
+```c
+// Color definitions
+#define BLACK    0x0000
+#define BLUE     0x001F
+#define RED      0xF800
+#define GREEN    0x07E0
+#define CYAN     0x07FF
+#define MAGENTA  0xF81F
+#define YELLOW   0xFFE0 
+#define WHITE    0xFFFF
+```
+
+### `draw-bitmap`
+
+```c
+drawBitmap(x, y, canvas.getBuffer(), 128, 32, foreground, background)
+```
+
+### `draw-char`
+
+(draw-char x y char [colour background size])
+Draws the character char with its top left corner at (x,y).
+The character is drawn in a 5 x 7 pixel font in colour against background,
+which default to white and black respectively.
+The character can optionally be scaled by size.
+
+### `draw-circle`
+
+### `draw-line`
+
+### `draw-pixel`
+
+```c
+void drawPixel(uint16_t x, uint16_t y, uint16_t color);
+```
+
+### `draw-rect`
+
+### `draw-round-rect`
+
+### `draw-triangle`
+
+### `fill-circle`
+
+### `fill-rect`
+
+### `fill-round-rect`
+
+### `fill-screen`
+
+### `fill-triangle`
+
+### `get-text-bounds`
+
+```c
+getTextBounds(string, x, y, &x1, &y1, &w, &h)
+```
+
+### `init(width, height)`
+
+### `invert-display`
+
+### `set-dursor`
+
+### `set-rotation`
+
+Sets the display orientation for subsequent graphics commands; values are 0, 1, 2, or 3.
+
+### `set-text-color`
+
+### `set-text-size`
+
+### `set-text-wrap`
