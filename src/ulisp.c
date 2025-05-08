@@ -2,7 +2,7 @@
  * ulisp-wasm - uLisp ported to WebAssembly
  *
  * Based on uLisp - http://www.ulisp.com
- * - uLisp ESP 4.7c https://github.com/technoblogy/ulisp-esp
+ * - uLisp ESP 4.7d https://github.com/technoblogy/ulisp-esp
  * - uLisp Builder 4.7  https://github.com/technoblogy/ulisp-builder
  * - uLisp BL602 fork at v3.6 https://github.com/lupyuen/ulisp-bl602
  */
@@ -7373,7 +7373,7 @@ bool findsubstring (char *part, builtin_t name) {
 #if !defined(__EMSCRIPTEN__)
 // Replaced by yield_loop()
 void testescape () {
-  static uint16_t n;
+  static unsigned long n;
   if (millis()-n < 500) return;
   n = millis();
   if (Serial.available() && Serial.read() == '~') error2("escape!");
@@ -8281,7 +8281,7 @@ void setup () {
   initenv();
   initsleep();
   initgfx();
-  pfstring(PSTR("uLisp 4.7c "), pserial); pln(pserial);
+  pfstring(PSTR("uLisp 4.7d "), pserial); pln(pserial);
   millis(); // Start time
 }
 
@@ -8408,7 +8408,7 @@ void evaluate(const char *line) {
 
 // For standalone build
 int main() {
-
+  loop();
 }
 
 #endif

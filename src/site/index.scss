@@ -1,0 +1,32 @@
+
+:root {
+  --custom-primary-color: oklch(20.5% 0 0);
+  --custom-secondary-color: white;
+}
+
+body[data-theme='dark'] {
+  --custom-primary-color: white;
+  --custom-secondary-color: oklch(20.5% 0 0);
+}
+
+body {
+  color: var(--custom-primary-color);
+  background-color: var(--custom-secondary-color);
+}
+
+
+.cm-editor {
+  .cm-content,
+  .cm-gutter {
+    min-height: 150px;
+  }
+  .cm-gutters {
+    margin: 1px;
+  }
+  .cm-scroller {
+    overflow: auto;
+  }
+  .cm-wrap {
+    border: 1px solid silver;
+  }
+}

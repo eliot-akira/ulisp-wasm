@@ -1,5 +1,6 @@
 /**
  * ulisp-wasi - uLisp ported to WebAssembly and WASI
+ * TODO: Issue with lack of WASM runtimes' support for setjmp and exceptions
  * TODO: Merge with ulisp.c
  */
 

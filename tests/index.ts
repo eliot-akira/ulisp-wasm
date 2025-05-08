@@ -12,23 +12,36 @@ test('create', async () => {
 
   is(true, result instanceof Object, 'promise resolves to module instance')
 
-  let printBuffer = ''
+  class PrintBuffer {
+    buffer = ''
+    start() {
+      this.buffer = ''
+    }
+    push(str: string) {
+      this.buffer += str
+    }
+    end() {
+      let result = this.buffer.trimEnd()
+      this.buffer = ''
+      return result  
+    }
+  }
+
+  const printBuffer = new PrintBuffer
 
   const Module = await createUlisp({
     print(...args) {
-      // console.log(...args)
-
-      printBuffer += args.reduce((result, arg) => {
+      printBuffer.push(args.reduce((result, arg) => {
         result += arg // Assume string
         return result
-      }, '')
+      }, ''))
     },
     setStatus: function (text) {
       // Status from Emscripten module
       // if (text) {
       //   console.log('status', text)
       // }
-    },
+    }
   })
 
   Module._setup()
@@ -71,7 +84,7 @@ test('create', async () => {
     },
     stop() {
       shouldStop = true
-    },
+    }
   })
 
   async function tick() {
@@ -90,14 +103,13 @@ test('create', async () => {
     // Module.print('\n> ' + code + '\n')
 
     shouldStop = false
+    printBuffer.start()
 
     // Wrap to run multiple expressions, returning the last value
     code = `(progn ${code})`
 
     //  Allocate memory for the string and create a pointer
     const ptr = Module.stringToNewUTF8(code)
-
-    printBuffer = ''
     Module._evaluate(ptr)
 
     let i = 0
@@ -119,16 +131,14 @@ test('create', async () => {
     // Free the memory
     Module._free(ptr)
 
-    let result = printBuffer.trimEnd()
-    printBuffer = ''
-    return result
+    return printBuffer.end()
   }
 
   let code
 
-    code = `(+ 1 2)`
-    result = await run(code)
-    is('3', result, code)
+  code = `(+ 1 2)`
+  result = await run(code)
+  is('3', result, code)
 
   code = `
 (defun fib (n)
@@ -139,7 +149,6 @@ test('create', async () => {
 
   result = await run(code)
   is('5', result, '(fib 5)')
-
 })
 
 runTests()

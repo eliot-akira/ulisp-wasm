@@ -1,22 +1,21 @@
 <!doctype html>
-<html lang="en-us">
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>uLisp Web</title>
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="UTF-8" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/ulisp-wasm/favicon.ico" sizes="48x48" />
+    <!-- <link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml" /> -->
+    <link rel="icon" href="/favicon.png" sizes="any" type="image/png" />
+    
+    <script type="module" crossorigin src="/ulisp-wasm/assets/index-dCmD7qzA.js"></script>
+    <link rel="stylesheet" crossorigin href="/ulisp-wasm/assets/index-Cd5p_6eV.css">
   </head>
   <body>
-
-  <form id="code-form">
-      <div id="editor"></div>
-      <button id="run" type="button">Run</button>
-    </form>
-
-    <div id="console"></div>
-    <canvas id="canvas"></canvas>
-
-    <script src="ulisp.js"></script>
-    <script src="script.js"></script>
+    <div id="root"><div class="p-4 h-screen"><section class=""><h4 class="font-weight-bold">Editor</h4><div></div></section><div><button class="">Run (CTRL or CMD + Enter)</button></div><section><h4 class="my-2">Console</h4><pre class="font-mono"><code></code></pre></section></div><script>window.__staticRouterHydrationData = JSON.parse("{\"loaderData\":{},\"actionData\":null,\"errors\":null}");</script></div>
+    <script>
+      window.__APP_STATE__ = {"key":"value"};
+    </script>
+    <script src="/ulisp-wasm/ulisp.js"></script>
   </body>
 </html>

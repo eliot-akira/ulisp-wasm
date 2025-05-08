@@ -1,4 +1,4 @@
-# uLisp WASM
+# uLisp on WebAssembly
 
 [uLisp](http://www.ulisp.com) is a programming language for microcontrollers and embedded devices. This project `ulisp-wasm` is an unofficial port of uLisp to WebAssembly that runs in the browser and on server side.
 
@@ -31,7 +31,9 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
 - [ ] CLI on server side to run uLisp programs
 - [x] Run in the browser
 - [x] Run on JavaScript runtimes: Node, Bun, Deno
-- [x] Run on WASM runtimes with WASI support: [wasmtime](https://github.com/bytecodealliance/wasmtime), [Wasmer](https://wasmer.io/)
+- [x] Run on WASM runtimes with WASI support
+  - [ ] [Wasmer](https://wasmer.io/) - [Add support for WebAssembly exceptions](https://github.com/wasmerio/wasmer/issues/3100)
+  - [ ] [wasmtime](https://github.com/bytecodealliance/wasmtime) - [Implementation strategy for the Exception Handling proposal](https://github.com/bytecodealliance/wasmtime/issues/3427)
 - [ ] Standalone executable
   - [WebAssembly Standalone](https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone)
   - Or maybe [`wasm-micro-runtime`](https://github.com/bytecodealliance/wasm-micro-runtime)

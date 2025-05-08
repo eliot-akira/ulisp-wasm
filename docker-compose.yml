@@ -6,5 +6,6 @@ services:
       - ./docs:/app/docs
       - ./node:/app/node
       - ./src:/app/src
+      - ./public:/app/public
       - ./wasi:/app/wasi
     working_dir: /app

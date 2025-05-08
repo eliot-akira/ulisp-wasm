@@ -1,9 +1,9 @@
-import createUlisp from '../node/ulisp.js'
+import createLispWasmModule from '../node/ulisp.js'
 
 export async function create() {
   let printBuffer = ''
 
-  const Module = await createUlisp({
+  const Module = await createLispWasmModule({
     print(...args) {
       // console.log(...args)
 
@@ -27,7 +27,7 @@ export async function create() {
 
   /**
    * TODO: Module expects a global variable `ulisp`. Move them as callbacks
-   * passed to createUlisp() above.
+   * passed to createLispWasmModule() above.
    */
   const ulisp = (globalThis.ulisp = {
     run,
