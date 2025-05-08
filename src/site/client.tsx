@@ -17,7 +17,7 @@ declare global {
 const routes = createRoutes()
 const router = createBrowserRouter(routes)
 const container = document.getElementById('root')
-const dehydratedState = window.__APP_STATE__ ? JSON.parse(window.__APP_STATE__) : {}
+const dehydratedState = window.__APP_STATE__ || {}
 
 if (container) {
   const app = (
