@@ -15,7 +15,10 @@ declare global {
 }
 
 const routes = createRoutes()
-const router = createBrowserRouter(routes)
+const router = createBrowserRouter(routes, {
+  // URL base - See vite.config.ts
+  basename: process.env.NODE_ENV==='development' ? '/' : '/ulisp-wasm'
+})
 const container = document.getElementById('root')
 const dehydratedState = window.__APP_STATE__ || {}
 
