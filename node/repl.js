@@ -36,7 +36,7 @@ export async function createLispRepl(lisp, options = {}) {
   })
 
   instance.on('error', (e) => {
-    throw e
+    console.error(e.message)
   })
 
   return instance

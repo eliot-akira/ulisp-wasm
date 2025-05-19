@@ -4,14 +4,17 @@ import { createLispRepl } from './repl.js'
 export async function createLispReplServer(lisp, options = {}) {
   const { port = 8000 } = options
 
-  const server = http.createServer((req, res) => {
+  const server = http.createServer(async (req, res) => {
     res.setHeader('content-type', 'multipart/octet-stream')
-
-    createLispRepl(lisp, {
-      input: req,
-      output: res,
-      terminal: false
-    }).catch((e) => res.end(e.message))
+    try {
+      await createLispRepl(lisp, {
+        input: req,
+        output: res,
+        terminal: false
+      })  
+    } catch(e) {
+      res.end(e.message)
+    }
   })
 
   server.listen(port)

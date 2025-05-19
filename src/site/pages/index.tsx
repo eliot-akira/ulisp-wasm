@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import * as editor from '@/editor'
 import { createLisp } from '../../web.ts'
 
+let lisp
+
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState('')
   const editorRef = useRef(null)
@@ -11,19 +13,32 @@ export default function Page() {
     const $editor = editorRef.current
     if (!$editor) return
 
-    const code = `(defun fib (n)
+    const code =
+`(defun fib (n)
   (if (< n 3) 1
     (+ (fib (- n 1)) (fib (- n 2)))))
 
 (fib 5)`
 
-    let lisp
+// Infinite loop
+// `(defun b ()
+//   (pinmode 13 t)
+//   (loop
+//    (digitalwrite 13 t)
+//    (delay 1000)
+//    (digitalwrite 13 nil) 
+//    (delay 1000)))
+// (b)`
 
     async function evaluate() {
       if (!lisp) return
       const code = editorView.state.doc.toString()
-      const result = await lisp.eval(code)
-      setConsoleOut(result)
+      try {
+        const result = await lisp.eval(code)
+        setConsoleOut(result)
+      } catch (e) {
+        console.log('eval error', e)
+      }
     }
 
     evalRef.current = evaluate
@@ -33,8 +48,14 @@ export default function Page() {
     })
 
     ;(async () => {
-      lisp = await createLisp()
-      evaluate() // Run example code
+      if (!lisp) {
+        // Workaround for React rendering twice in dev mode
+        lisp = createLisp()
+        lisp = await lisp
+
+        console.log('uLisp', lisp.version())
+        evaluate() // Run example code
+      }
     })().catch(console.error)
 
     return () => {
@@ -46,7 +67,7 @@ export default function Page() {
   return (
     <div className="p-4 h-screen">
       <section className="">
-        <h4 className='font-weight-bold'>Editor</h4>
+        <h4 className="font-weight-bold">Editor</h4>
         <div ref={editorRef}></div>
       </section>
       <div>

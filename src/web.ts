@@ -1,53 +1,54 @@
-
-class PrintBuffer {
-  buffer = ''
-  start() {
-    this.buffer = ''
-  }
-  push(str) {
-    this.buffer += str
-  }
-  end() {
-    let result = this.buffer.trimEnd()
-    this.buffer = ''
-    return result
-  }
-}
+import createLispWasmModule from './ulisp.js'
+import { lispCreator } from '../node/common.js'
 
 export async function createLisp() {
-
-  // TODO: Figure out Vite bundle/serve .wasm from docs
-  const { createLispWasmModule } = window
-
-  const printBuffer = new PrintBuffer()
-  const Module = await createLispWasmModule({
-    print(...args) {
-      printBuffer.push(
-        args.reduce((result, arg) => {
-          result += arg // Assume string
-          return result
-        }, '')
-      )
-    }
+  /**
+   * TODO: Module expects a global variable `ulisp`. Move them as callbacks
+   * passed to createLispWasmModule().
+   */
+  const ulisp = (globalThis.ulisp = {
+    // run,
+    // Called from Lisp code running on WASM
+    call(command, ...args) {
+      console.log('ulisp.call', command, ...args)
+      switch (command) {
+        case 'analogRead':
+          return 0
+          break
+        case 'analogWrite':
+          break
+        case 'digitalRead':
+          return 0
+          break
+        case 'digitalWrite':
+          break
+      }
+    },
+    async delay(duration = 0) {
+      return new Promise((resolve, reject) => {
+        console.log('delay', duration)
+        setTimeout(resolve, parseInt(duration, 10))
+      })
+    },
+    escape() {
+      return 0 // Return 1 to stop the runtime
+    },
+    wait_for_tick() {},
+    stop() {}
   })
 
-  Module._setup()
+  return await lispCreator({
+    createLispWasmModule
+  })
 
-  async function evaluate(code) {
-    printBuffer.start()
-
-    // Allocate memory for string
-    const ptr = Module.stringToNewUTF8(`(progn ${code})`)
-
-    Module._evaluate(ptr)
-
-    // Free it after use
-    Module._free(ptr)
-
-    return printBuffer.end()
-  }
-
-  return {
-    eval: evaluate
-  }
+  // eval: evaluate,
+  // stop() {
+  //   console.log('stop')
+  //   Module._stop_loop()
+  // },
+  // version() {
+  //   printBuffer.start()
+  //   Module._print_version()
+  //   return printBuffer.end()
+  // }
 }

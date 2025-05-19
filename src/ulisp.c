@@ -17,7 +17,7 @@ const char LispLibrary[] = "";
 // #define printgcs
 // #define sdcardsupport
 // #define gfxsupport
-// #define lisplibrary
+#define lisplibrary
 // #define lineeditor
 // #define vt100
 // #define extensions
@@ -38,6 +38,8 @@ const char LispLibrary[] = "";
 #include <string.h>
 #include <assert.h>
 #include <emscripten.h>
+
+#define VERSION "4.7d"
 
 #if defined(gfxsupport)
 #define COLOR_WHITE ST77XX_WHITE
@@ -194,7 +196,7 @@ typedef void (*pfun_t)(char);
 
 enum builtins: builtin_t { NIL, TEE, NOTHING, OPTIONAL, FEATURES, INITIALELEMENT, ELEMENTTYPE, TEST, COLONA, COLONB,
 COLONC, BIT, AMPREST, LAMBDA, LET, LETSTAR, CLOSURE, PSTAR, QUOTE, DEFUN, DEFVAR, EQ, CAR, FIRST, CDR,
-REST, NTH, AREF, CHAR, STRINGFN, PINMODE, DIGITALWRITE, ANALOGREAD, REGISTER, FORMAT, 
+REST, NTH, AREF, CHAR, STRINGFN, PINMODE, DIGITALWRITE, ANALOGREAD, REGISTER, FORMAT
  };
 
 // Global variables
@@ -344,7 +346,13 @@ void pinMode(int pin, int mode) {
   }, "pinMode", pin, mode);  
 }
 
+EM_ASYNC_JS(void, delay_on_host, (int millisecs), {
+  await ulisp.delay( millisecs );
+});
 
+void delay (int millisecs) {
+  delay_on_host(millisecs);
+}
 
 #endif
 // ***************************************************************
@@ -2561,9 +2569,7 @@ void nonote (int pin) {
 
 void initsleep () { }
 
-#if defined(__EMSCRIPTEN__)
-void delay (int millisecs) { TODO0(delay); }
-#endif
+// See delay() above
 
 void doze (int secs) {
   delay(1000 * secs);
@@ -5313,8 +5319,15 @@ object *fn_analogwrite (object *args, object *env) {
   Delays for a specified number of milliseconds.
 */
 object *fn_delay (object *args, object *env) {
+
   (void) env;
   object *arg1 = first(args);
+
+  #if defined(__EMSCRIPTEN__)
+
+  delay( checkinteger(arg1) );
+  #else
+
   unsigned long start = millis();
   unsigned int total = checkinteger(arg1); // long?
   // Allow stopping at any time
@@ -5323,6 +5336,8 @@ object *fn_delay (object *args, object *env) {
   };
   // Sleep cannot be interrupted
   // emscripten_sleep(total);
+  #endif
+
   return arg1;
 }
 
@@ -8265,6 +8280,11 @@ void initgfx () {
   #endif
 }
 
+void print_version() {
+  pfstring(VERSION, pserial);
+  pln(pserial);
+}
+
 void setup () {
 #if !defined(__EMSCRIPTEN__)
   Serial.begin(9600);
@@ -8276,12 +8296,16 @@ void setup () {
   if (!Workspace) { Serial.print("the Workspace couldn't be allocated"); for(;;); }
   #endif
 #endif
+
   int stackhere = 0; StackBottom = &stackhere;
   initworkspace();
   initenv();
   initsleep();
   initgfx();
-  pfstring(PSTR("uLisp 4.7d "), pserial); pln(pserial);
+
+  pfstring("uLisp ", pserial);
+  print_version();
+
   millis(); // Start time
 }
 
@@ -8348,20 +8372,10 @@ void ulisperror () {
   // client.stop(); // TODO:
 }
 
-int max_steps = 9999;
+int max_steps = 999999;
 int steps = 0;
-
-bool wait_for_tick() {
-  steps++;
-  if (steps <= max_steps) {
-    return false; // continue
-  }
-  pfstring("Error: Maximum steps exceeded: ", pserial);
-  printobject(number(max_steps), pserial);
-  pln(pserial);
-  errorend();
-  return true;
-}
+bool should_limit_steps = true;
+bool should_wait_for_host = false; // TODO:
 
 /*
   loop - Main execution loop
@@ -8384,21 +8398,44 @@ void loop () {
 // WebAssembly ***************************************************************
 #if defined(__EMSCRIPTEN__)
 
-// EM_ASYNC_JS(int, wait_for_tick, (), {
-//   return await ulisp.wait_for_tick();
-// });
+EM_ASYNC_JS(int, wait_for_tick_on_host, (), {
+  return await ulisp.wait_for_tick();
+});
+
+bool wait_for_tick () {
+  steps++;
+  if (should_wait_for_host) {
+    // Yielding to host on every step is slow
+    if (wait_for_tick_on_host()) {
+      errorend();
+      return true;
+    };
+  }
+  if (!should_limit_steps || steps <= max_steps) {
+    return false; // continue
+  }
+  pfstring("Error: Maximum steps exceeded: ", pserial);
+  printobject(number(max_steps), pserial);
+  pln(pserial);
+  errorend();
+  return true;
+}
 
 // Yield evaluation loop and allow background tasks to run.
 // Called by eval() and sp_loop()
-void yield_loop(void) {
+void yield_loop (void) {
   // Wait until host calls next tick
   if (loop_done || wait_for_tick()) {
     errorend();
   }
 }
 
+void stop_loop () {
+  errorend();
+}
+
 // Evaluate expression
-void evaluate(const char *line) {
+void evaluate (const char *line) {
   assert(line != NULL);
   input_buf = line;
   input_pos = 0;

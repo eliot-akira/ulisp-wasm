@@ -1039,7 +1039,7 @@ async function createWasm() {
   handleAsync(startAsync) {
         return Asyncify.handleSleep((wakeUp) => {
           // TODO: add error handling as a second param when handleSleep implements it.
-          startAsync().then(wakeUp);
+          startAsync().then(wakeUp).catch(() => {});
         });
       },
   };
@@ -1237,17 +1237,23 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  52180: () => { return performance.now(); },  
- 52210: ($0) => { return performance.now() - $0; },  
- 52245: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 52290: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 52332: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 52377: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 52419: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
+  52164: () => { return performance.now(); },  
+ 52194: ($0) => { return performance.now() - $0; },  
+ 52229: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52274: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 52316: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52361: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 52403: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
 };
+function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await ulisp.delay( millisecs ); }); }
+function __asyncjs__wait_for_tick_on_host() { return Asyncify.handleAsync(async () => { return await ulisp.wait_for_tick(); }); }
 var wasmImports = {
   /** @export */
   __assert_fail: ___assert_fail,
+  /** @export */
+  __asyncjs__delay_on_host,
+  /** @export */
+  __asyncjs__wait_for_tick_on_host,
   /** @export */
   _emscripten_throw_longjmp: __emscripten_throw_longjmp,
   /** @export */
@@ -1269,7 +1275,9 @@ var wasmImports = {
 };
 var wasmExports = await createWasm();
 var ___wasm_call_ctors = wasmExports['__wasm_call_ctors']
+var _print_version = Module['_print_version'] = wasmExports['print_version']
 var _setup = Module['_setup'] = wasmExports['setup']
+var _stop_loop = Module['_stop_loop'] = wasmExports['stop_loop']
 var _evaluate = Module['_evaluate'] = wasmExports['evaluate']
 var _malloc = wasmExports['malloc']
 var _free = Module['_free'] = wasmExports['free']

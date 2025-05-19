@@ -15,14 +15,14 @@ switch (command) {
     src/ulisp.c -I src -o public/ulisp.js \
     -O2 -fms-extensions -sENVIRONMENT=web -sEXPORT_NAME=createLispWasmModule \
     -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
-    -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free' ]" \
+    -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free', '_print_version', '_stop_loop' ]" \
     -s "EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
 
     {
-      // const file = 'src/ulisp.js'
-      // await fs.rename('docs/ulisp.js', file)
-      // await fs.writeFile(file, replaceExports(await fs.readFile(file, 'utf8')))
-      // console.log('Wrote', file)
+      const file = 'src/ulisp.js'
+      await fs.rename('public/ulisp.js', file)
+      await fs.writeFile(file, replaceCommon(await fs.readFile(file, 'utf8')))
+      console.log('Wrote', file)
     }
 
     break
@@ -33,7 +33,7 @@ switch (command) {
     await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc \
     src/ulisp.c -I src -o node/ulisp.js -O2 -fms-extensions -sENVIRONMENT=node \
     -sEXPORT_NAME=createLispWasmModule -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
-    -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free' ]" \
+    -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free', '_print_version', '_stop_loop' ]" \
     -s "EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
     /**
      * HACK: Patch output of Emscripten in node/ulisp.js
@@ -45,7 +45,7 @@ switch (command) {
       const file = 'node/ulisp.js'
       await fs.writeFile(
         file,
-        replaceExports(await fs.readFile(file, 'utf8'))
+        replaceCommon(await fs.readFile(file, 'utf8'))
           .replace(`fs = require('fs')`, `fs = await import('fs')`)
           .replace(`require('path')`, `{}`)
       )
@@ -69,15 +69,21 @@ switch (command) {
     break
 }
 
-function replaceExports(str) {
-  return str.replace(
-    `if (typeof exports === 'object' && typeof module === 'object') {
+function replaceCommon(str) {
+  return str
+    .replace(
+      `if (typeof exports === 'object' && typeof module === 'object') {
   module.exports = createLispWasmModule;
   // This default export looks redundant, but it allows TS to import this
   // commonjs style module.
   module.exports.default = createLispWasmModule;
 } else if (typeof define === 'function' && define['amd'])
   define([], () => createLispWasmModule);`,
-    `export default createLispWasmModule`
-  )
+      `export default createLispWasmModule`
+    )
+    .replace(
+      // Silence unhandled promise when loop aborted
+      `startAsync().then(wakeUp);`,
+      `startAsync().then(wakeUp).catch(() => {});`
+    )
 }

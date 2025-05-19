@@ -18,7 +18,7 @@ async function render() {
     {
       routePath: '/',
       fileName: '/index.html'
-    },
+    }
     // {
     //   routePath: '/1',
     //   fileName: '/1/index.html'
@@ -35,16 +35,12 @@ async function render() {
 
       const t0 = performance.now()
 
-      const request = new Request(`https://example.com${routePath}`)
       const routes = createRoutes()
       const { query, dataRoutes } = createStaticHandler(routes)
+
+      const request = new Request(`https://example.com${routePath}`)
       const context = (await query(request)) as StaticHandlerContext
       const router = createStaticRouter(dataRoutes, context)
-
-      // TODO: Pass state to initial render
-      const state = {
-        key: 'value'
-      }
 
       const { pipe } = renderToPipeableStream(
         <StrictMode>
@@ -61,8 +57,10 @@ async function render() {
             })
 
             writeable.on('finish', () => {
-
-              // TODO: Resolve async data fetch
+              // TODO: Resolve async data fetch and pass to client
+              const state = {
+                key: 'value'
+              }
 
               const [head, body] = chunks.join('').split(HTML_DIVIDER)
 
