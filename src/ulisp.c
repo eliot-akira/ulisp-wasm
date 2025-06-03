@@ -1,5 +1,5 @@
 /**
- * ulisp-wasm - uLisp ported to WebAssembly
+ * ulisp-c99 - uLisp ported to C99
  *
  * Based on uLisp - http://www.ulisp.com
  * - uLisp ESP 4.7d https://github.com/technoblogy/ulisp-esp
@@ -36,8 +36,20 @@ const char LispLibrary[] = "";
 #include <stdbool.h> 
 #include <math.h>
 #include <string.h>
+#include <strings.h>
 #include <assert.h>
+#include <time.h>
+
+#if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
+#else
+#define __STANDALONE__
+#endif
+
+// Can be both Emscripten and standalone
+#if defined(__STANDALONE__)
+#include "linenoise.h"
+#endif
 
 #define VERSION "4.7d"
 
@@ -66,8 +78,6 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define WORDALIGNED __attribute__((aligned (4)))
 #define BUFFERSIZE 36  // Number of bits+4
 
-#if defined(__EMSCRIPTEN__)
-
 #define WORKSPACESIZE (65536-SDSIZE)            /* Objects (8*bytes) Commonly 9216 + PSRAM 250000~1000000 */
 #define MAX_STACK 8000                          /* Stack, typically 6500~8000 for ESP32 */
 #define SDCARD_SS_PIN 13
@@ -75,7 +85,7 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 // #define EEPROMSIZE        4096              /* Bytes available for EEPROM */
 
 #define PROGMEM
-#define PSTR(s)   s
+#define PSTR(s)      s
 #define TODO0(s)     { printf("TODO: " #s "\r\n"); return; }    //  With no return value
 #define TODO1(s, v)  { printf("TODO: " #s "\r\n"); return v; }  //  With return value
 
@@ -85,10 +95,6 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define INPUT_PULLUP    3
 #define INPUT_PULLDOWN  4
 #define OUTPUT          5
-
-#else
-#error "Board not supported!"
-#endif
 
 // C Macros
 
@@ -139,6 +145,27 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define BUILTINS           0xF4240000
 #define ENDFUNCTIONS       0x0BDC0000
 
+#if defined(__STANDALONE__) && !defined(__EMSCRIPTEN__)
+
+int random (int max_num) {
+    int min_num = 0;
+    int result = 0, low_num = 0, hi_num = 0;
+
+    if (min_num < max_num)
+    {
+        low_num = min_num;
+        hi_num = max_num + 1; // include max_num in output
+    } else {
+        low_num = max_num + 1; // include max_num in output
+        hi_num = min_num;
+    }
+
+    srand(time(NULL));
+    result = (rand() % (hi_num - low_num)) + low_num;
+    return result;
+}
+#endif
+
 // Constants
 
 #define TRACEMAX 3  // Maximum number of traced functions
@@ -159,9 +186,16 @@ const char *const streamname[] = {serialstream, i2cstream, spistream, sdstream, 
 
 // Typedefs
 
+#if defined(__EMSCRIPTEN__)
 typedef uint32_t symbol_t;
 typedef uint32_t builtin_t;
 typedef uint32_t chars_t;
+#else
+// Support 64-bit platform
+typedef uintptr_t symbol_t;
+typedef uintptr_t builtin_t;
+typedef uintptr_t chars_t;
+#endif
 
 typedef struct sobject {
   union {
@@ -196,7 +230,7 @@ typedef void (*pfun_t)(char);
 
 enum builtins: builtin_t { NIL, TEE, NOTHING, OPTIONAL, FEATURES, INITIALELEMENT, ELEMENTTYPE, TEST, COLONA, COLONB,
 COLONC, BIT, AMPREST, LAMBDA, LET, LETSTAR, CLOSURE, PSTAR, QUOTE, DEFUN, DEFVAR, EQ, CAR, FIRST, CDR,
-REST, NTH, AREF, CHAR, STRINGFN, PINMODE, DIGITALWRITE, ANALOGREAD, REGISTER, FORMAT
+REST, NTH, AREF, CHAR, STRINGFN, PINMODE, DIGITALWRITE, ANALOGREAD, ANALOGWRITE, REGISTER, FORMAT
  };
 
 // Global variables
@@ -239,15 +273,12 @@ volatile flags_t Flags = 1<<PRINTREADABLY; // Set by default
 object *tee;
 void pfstring (const char *s, pfun_t pfun);
 
-// WebAssembly ***************************************************************
-#if defined(__EMSCRIPTEN__)
-
 // https://github.com/espressif/arduino-esp32/blob/ba2ab1e4bb59fe9601e8dd9c0ebbc544dfeca242/cores/esp32/Arduino.h#L99
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)
 #define testescape yield_loop
 
 object *tf_progn (object *args, object *env);
-object *read (gfun_t gfun);
+object *sread (gfun_t gfun);
 void printobject (object *form, pfun_t pfun);
 intptr_t lookupfn (builtin_t name);
 void pfl (pfun_t pfun);
@@ -287,7 +318,6 @@ bool colonp (symbol_t name);
 void pbuiltin (builtin_t name, pfun_t pfun);
 void plispstr (symbol_t name, pfun_t pfun);
 
-
 // Setup environment
 void setup();
 
@@ -304,12 +334,19 @@ void yield_loop(void);
 double startTime = 0;
 
 double millis() {
+  #if defined(__EMSCRIPTEN__)
+
   if (startTime==0) startTime = EM_ASM_DOUBLE({
     return performance.now();
   });
   return EM_ASM_DOUBLE({
     return performance.now() - $0;
   }, startTime);
+
+  #else
+  // TODO:
+  return 0;
+  #endif
 }
 
 long micros() {
@@ -317,44 +354,82 @@ long micros() {
 }
 
 double analogRead(int pin) {
+
+  #if defined(__EMSCRIPTEN__)
+
   return EM_ASM_DOUBLE({
     return ulisp.call(UTF8ToString($0), $1);
   }, "analogRead", pin);
+
+  #else
+  // TODO:
+  return 0;
+  #endif
 }
 
 void analogWrite(int pin, double value) {
+
+  #if defined(__EMSCRIPTEN__)
+
   EM_ASM({
     ulisp.call(UTF8ToString($0), $1, $2);
   }, "analogWrite", pin, value);
+
+  #else
+  // TODO:
+  return;
+  #endif
 }
 
 int digitalRead(int pin) {
+
+  #if defined(__EMSCRIPTEN__)
+
   return EM_ASM_INT({
     return ulisp.call(UTF8ToString($0), $1);
   }, "digitalRead", pin);
+
+  #else
+  // TODO:
+  return 0;
+  #endif
 }
 
 void digitalWrite(int pin, int mode) {
+  #if defined(__EMSCRIPTEN__)
   EM_ASM({
     ulisp.call(UTF8ToString($0), $1, $2);
   }, "digitalWrite", pin, mode);
+  #else
+  // TODO:
+  return;
+  #endif
 }
 
 void pinMode(int pin, int mode) {
+  #if defined(__EMSCRIPTEN__)
   EM_ASM({
     ulisp.call(UTF8ToString($0), $1, $2);
   }, "pinMode", pin, mode);  
+  #else
+  // TODO:
+  return;
+  #endif
 }
 
+#if defined(__EMSCRIPTEN__)
 EM_ASYNC_JS(void, delay_on_host, (int millisecs), {
   await ulisp.delay( millisecs );
 });
-
 void delay (int millisecs) {
   delay_on_host(millisecs);
 }
-
+#else
+void delay (int millisecs) {
+  // TODO:
+}
 #endif
+
 // ***************************************************************
 
 // Error handling
@@ -506,7 +581,10 @@ object *myalloc () {
   myfree - adds obj to the linked list of free objects.
   inline makes gc significantly faster
 */
-inline void myfree (object *obj) {
+#if defined(__EMSCRIPTEN__) && !defined(__STANDALONE__)
+inline
+#endif
+void myfree (object *obj) {
   car(obj) = NULL;
   cdr(obj) = Freelist;
   Freelist = obj;
@@ -568,7 +646,10 @@ object *symbol (symbol_t name) {
 /*
   bsymbol - make a built-in symbol
 */
-inline object *bsymbol (builtin_t name) {
+#if defined(__EMSCRIPTEN__) && !defined(__STANDALONE__)
+inline
+#endif
+object *bsymbol (builtin_t name) {
   return intern(twist(name+BUILTINS));
 }
 
@@ -866,16 +947,21 @@ int EpromReadInt (int *addr) {
   TODO1(EpromReadInt, 0);
 }
 #else
+
 void EpromWriteInt(int *addr, uintptr_t data) {
-  EEPROM.write((*addr)++, data & 0xFF); EEPROM.write((*addr)++, data>>8 & 0xFF);
-  EEPROM.write((*addr)++, data>>16 & 0xFF); EEPROM.write((*addr)++, data>>24 & 0xFF);
+  // TODO:
+  // EEPROM.write((*addr)++, data & 0xFF); EEPROM.write((*addr)++, data>>8 & 0xFF);
+  // EEPROM.write((*addr)++, data>>16 & 0xFF); EEPROM.write((*addr)++, data>>24 & 0xFF);
 }
 
 int EpromReadInt (int *addr) {
-  uint8_t b0 = EEPROM.read((*addr)++); uint8_t b1 = EEPROM.read((*addr)++);
-  uint8_t b2 = EEPROM.read((*addr)++); uint8_t b3 = EEPROM.read((*addr)++);
-  return b0 | b1<<8 | b2<<16 | b3<<24;
+  // TODO:
+  return 0;
+  // uint8_t b0 = EEPROM.read((*addr)++); uint8_t b1 = EEPROM.read((*addr)++);
+  // uint8_t b2 = EEPROM.read((*addr)++); uint8_t b3 = EEPROM.read((*addr)++);
+  // return b0 | b1<<8 | b2<<16 | b3<<24;
 }
+
 #endif
 
 /*
@@ -883,7 +969,9 @@ int EpromReadInt (int *addr) {
 */
 unsigned int saveimage (object *arg) {
 #if defined(__EMSCRIPTEN__)
-  TODO1(saveimage, 0);
+
+TODO1(saveimage, 0);
+
 #elif defined(sdcardsupport)
   unsigned int imagesize = compactimage(&arg);
   SDBegin();
@@ -2429,7 +2517,6 @@ object *dobody (object *args, object *env, bool star) {
 }
 
 // I2C, serial, WiFi ***************************************************************
-#if defined(__EMSCRIPTEN__)
 
 void I2Cinit (bool enablePullup) {
   TODO0(I2Cinit);
@@ -2468,7 +2555,6 @@ void gfxwrite (char c) { TODO0(gfxwrite); }
 void serialbegin (int address, int baud) { TODO0(serialbegin); }
 void serialend (int address) { TODO0(serialend); }
 
-#endif
 // ***************************************************************
 
 pfun_t pstreamfun (object *args) {
@@ -2535,10 +2621,10 @@ void checkanalogwrite (int pin) {
 #elif defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2) || defined(ARDUINO_ADAFRUIT_FEATHER_ESP32S2_TFT) || defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2) \
   || defined(ARDUINO_FEATHERS2) || defined(ARDUINO_ESP32S2_DEV)
   if (!(pin>=17 && pin<=18)) error("invalid pin", number(pin));
-#elif defined(__EMSCRIPTEN__)
-  // TODO:
+
 #else
-  error2(ANALOGWRITE, "not supported");
+  // TODO:
+  // error2(ANALOGWRITE, "not supported");
 #endif
 }
 
@@ -2682,9 +2768,9 @@ object *edit (object *fun) {
     char c = gserial();
     if (c == 'q') setflag(EXITEDITOR);
     else if (c == 'b') return fun;
-    else if (c == 'r') fun = read(gserial);
+    else if (c == 'r') fun = sread(gserial);
     else if (c == '\n') { pfl(pserial); superprint(fun, 0, pserial); pln(pserial); }
-    else if (c == 'c') fun = cons(read(gserial), fun);
+    else if (c == 'c') fun = cons(sread(gserial), fun);
     else if (atom(fun)) pserial('!');
     else if (c == 'd') fun = cons(car(fun), edit(cdr(fun)));
     else if (c == 'a') fun = cons(edit(car(fun)), cdr(fun));
@@ -3150,38 +3236,37 @@ object *sp_withserial (object *args, object *env) {
   to be read from the stream. If port is omitted it defaults to 0, otherwise it specifies the port, 0 or 1.
 */
 object *sp_withi2c (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
-  TODO1(sp_withi2c, nil);
-#else
-  object *params = checkarguments(args, 2, 4);
-  object *var = first(params);
-  int address = checkinteger(eval(second(params), env));
-  params = cddr(params);
-  if ((address == 0 || address == 1) && params != NULL) {
-    address = address * 128 + checkinteger(eval(first(params), env));
-    params = cdr(params);
-  }
-  int read = 0; // Write
-  I2Ccount = 0;
-  if (params != NULL) {
-    object *rw = eval(first(params), env);
-    if (integerp(rw)) I2Ccount = rw->integer;
-    read = (rw != NULL);
-  }
 
-  // Top bit of address is I2C port
-  TwoWire *port = &Wire;
-  #if ULISP_HOWMANYI2C == 2
-  if (address > 127) port = &Wire1;
-  #endif
-  I2Cinit(port, 1); // Pullups
-  object *pair = cons(var, (I2Cstart(port, address & 0x7F, read)) ? stream(I2CSTREAM, address) : nil);
-  push(pair,env);
-  object *forms = cdr(args);
-  object *result = eval(tf_progn(forms,env), env);
-  I2Cstop(port, read);
-  return result;
-#endif
+  TODO1(sp_withi2c, nil);
+
+  // object *params = checkarguments(args, 2, 4);
+  // object *var = first(params);
+  // int address = checkinteger(eval(second(params), env));
+  // params = cddr(params);
+  // if ((address == 0 || address == 1) && params != NULL) {
+  //   address = address * 128 + checkinteger(eval(first(params), env));
+  //   params = cdr(params);
+  // }
+  // int read = 0; // Write
+  // I2Ccount = 0;
+  // if (params != NULL) {
+  //   object *rw = eval(first(params), env);
+  //   if (integerp(rw)) I2Ccount = rw->integer;
+  //   read = (rw != NULL);
+  // }
+
+  // // Top bit of address is I2C port
+  // TwoWire *port = &Wire;
+  // #if ULISP_HOWMANYI2C == 2
+  // if (address > 127) port = &Wire1;
+  // #endif
+  // I2Cinit(port, 1); // Pullups
+  // object *pair = cons(var, (I2Cstart(port, address & 0x7F, read)) ? stream(I2CSTREAM, address) : nil);
+  // push(pair,env);
+  // object *forms = cdr(args);
+  // object *result = eval(tf_progn(forms,env), env);
+  // I2Cstop(port, read);
+  // return result;
 }
 
 /*
@@ -3191,42 +3276,41 @@ object *sp_withi2c (object *args, object *env) {
   bitorder 0 for LSBFIRST and 1 for MSBFIRST (default 1), and SPI mode (default 0).
 */
 object *sp_withspi (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
+
   TODO1(sp_withspi, nil);
-#else
-  object *params = checkarguments(args, 2, 6);
-  object *var = first(params);
-  params = cdr(params);
-  if (params == NULL) error2(nostream);
-  int pin = checkinteger(eval(car(params), env));
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, HIGH);
-  params = cdr(params);
-  int clock = 4000, mode = SPI_MODE0; // Defaults
-  int bitorder = MSBFIRST;
-  if (params != NULL) {
-    clock = checkinteger(eval(car(params), env));
-    params = cdr(params);
-    if (params != NULL) {
-      bitorder = (checkinteger(eval(car(params), env)) == 0) ? LSBFIRST : MSBFIRST;
-      params = cdr(params);
-      if (params != NULL) {
-        int modeval = checkinteger(eval(car(params), env));
-        mode = (modeval == 3) ? SPI_MODE3 : (modeval == 2) ? SPI_MODE2 : (modeval == 1) ? SPI_MODE1 : SPI_MODE0;
-      }
-    }
-  }
-  object *pair = cons(var, stream(SPISTREAM, pin));
-  push(pair,env);
-  SPI.begin();
-  SPI.beginTransaction(SPISettings(((unsigned long)clock * 1000), bitorder, mode));
-  digitalWrite(pin, LOW);
-  object *forms = cdr(args);
-  object *result = eval(tf_progn(forms,env), env);
-  digitalWrite(pin, HIGH);
-  SPI.endTransaction();
-  return result;
-#endif
+
+  // object *params = checkarguments(args, 2, 6);
+  // object *var = first(params);
+  // params = cdr(params);
+  // if (params == NULL) error2(nostream);
+  // int pin = checkinteger(eval(car(params), env));
+  // pinMode(pin, OUTPUT);
+  // digitalWrite(pin, HIGH);
+  // params = cdr(params);
+  // int clock = 4000, mode = SPI_MODE0; // Defaults
+  // int bitorder = MSBFIRST;
+  // if (params != NULL) {
+  //   clock = checkinteger(eval(car(params), env));
+  //   params = cdr(params);
+  //   if (params != NULL) {
+  //     bitorder = (checkinteger(eval(car(params), env)) == 0) ? LSBFIRST : MSBFIRST;
+  //     params = cdr(params);
+  //     if (params != NULL) {
+  //       int modeval = checkinteger(eval(car(params), env));
+  //       mode = (modeval == 3) ? SPI_MODE3 : (modeval == 2) ? SPI_MODE2 : (modeval == 1) ? SPI_MODE1 : SPI_MODE0;
+  //     }
+  //   }
+  // }
+  // object *pair = cons(var, stream(SPISTREAM, pin));
+  // push(pair,env);
+  // SPI.begin();
+  // SPI.beginTransaction(SPISettings(((unsigned long)clock * 1000), bitorder, mode));
+  // digitalWrite(pin, LOW);
+  // object *forms = cdr(args);
+  // object *result = eval(tf_progn(forms,env), env);
+  // digitalWrite(pin, HIGH);
+  // SPI.endTransaction();
+  // return result;
 }
 
 /*
@@ -4784,7 +4868,7 @@ object *fn_readfromstring (object *args, object *env) {
   object *arg = checkstring(first(args));
   GlobalString = arg;
   GlobalStringIndex = 0;
-  object *val = read(gstr);
+  object *val = sread(gstr);
   LastChar = 0;
   return val;
 }
@@ -4969,10 +5053,12 @@ object *fn_read (object *args, object *env) {
 #ifdef __EMSCRIPTEN__
   TODO1(fn_read, nil);
 #else
-  (void) env;
-  gfun_t gfun = gstreamfun(args);
-  return read(gfun);
+  // TODO:
+  // (void) env;
+  // gfun_t gfun = gstreamfun(args);
+  // return sread(gfun);
 #endif
+  return nil;
 }
 
 /*
@@ -5036,11 +5122,13 @@ object *fn_readbyte (object *args, object *env) {
 #if defined(__EMSCRIPTEN__)
   TODO1(fn_readbyte, nil);
 #else
-  (void) env;
-  gfun_t gfun = gstreamfun(args);
-  int c = gfun();
-  return (c == -1) ? nil : number(c);
+  // TODO:
+  // (void) env;
+  // gfun_t gfun = gstreamfun(args);
+  // int c = gfun();
+  // return (c == -1) ? nil : number(c);
 #endif
+  return nil;
 }
 
 /*
@@ -5052,10 +5140,12 @@ object *fn_readline (object *args, object *env) {
 #if defined(__EMSCRIPTEN__)
   TODO1(fn_readline, nil);
 #else
-  (void) env;
-  gfun_t gfun = gstreamfun(args);
-  return readstring('\n', false, gfun);
+  // TODO:
+  // (void) env;
+  // gfun_t gfun = gstreamfun(args);
+  // return readstring('\n', false, gfun);
 #endif
+  return nil;
 }
 
 /*
@@ -5067,11 +5157,7 @@ object *fn_writebyte (object *args, object *env) {
   int c = checkinteger(first(args));
   pfun_t pfun = pstreamfun(cdr(args));
   if (c == '\n' && pfun == pserial) {
-    #if defined(__EMSCRIPTEN__)
-      putchar('\n');
-    #else
-      Serial.write('\n');
-    #endif
+    putchar('\n');
   }
   else (pfun)(c);
   return nil;
@@ -5115,28 +5201,27 @@ object *fn_writeline (object *args, object *env) {
   If read-p is an integer it specifies the number of bytes to be read from the stream.
 */
 object *fn_restarti2c (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
+
   TODO1(fn_restarti2c, nil);
-#else
-  (void) env;
-  int stream = isstream(first(args));
-  args = cdr(args);
-  int read = 0; // Write
-  I2Ccount = 0;
-  if (args != NULL) {
-    object *rw = first(args);
-    if (integerp(rw)) I2Ccount = rw->integer;
-    read = (rw != NULL);
-  }
-  int address = stream & 0xFF;
-  if (stream>>8 != I2CSTREAM) error2("not an i2c stream");
-  TwoWire *port;
-  if (address < 128) port = &Wire;
-  #if ULISP_HOWMANYI2C == 2
-  else port = &Wire1;
-  #endif
-  return I2Crestart(port, address & 0x7F, read) ? tee : nil;
-#endif
+
+  // (void) env;
+  // int stream = isstream(first(args));
+  // args = cdr(args);
+  // int read = 0; // Write
+  // I2Ccount = 0;
+  // if (args != NULL) {
+  //   object *rw = first(args);
+  //   if (integerp(rw)) I2Ccount = rw->integer;
+  //   read = (rw != NULL);
+  // }
+  // int address = stream & 0xFF;
+  // if (stream>>8 != I2CSTREAM) error2("not an i2c stream");
+  // TwoWire *port;
+  // if (address < 128) port = &Wire;
+  // #if ULISP_HOWMANYI2C == 2
+  // else port = &Wire1;
+  // #endif
+  // return I2Crestart(port, address & 0x7F, read) ? tee : nil;
 }
 
 /*
@@ -5396,7 +5481,7 @@ object *fn_note (object *args, object *env) {
 object *fn_register (object *args, object *env) {
   (void) env;
   object *arg = first(args);
-  int addr;
+  uintptr_t addr;
   if (keywordp(arg)) addr = checkkeyword(arg);
   else addr = checkinteger(first(args));
   if (cdr(args) == NULL) return number(*(uint32_t *)addr);
@@ -5569,7 +5654,7 @@ object *fn_require (object *args, object *env) {
     globals = cdr(globals);
   }
   GlobalStringIndex = 0;
-  object *line = read(glibrary);
+  object *line = sread(glibrary);
   while (line != NULL) {
     // Is this the definition we want
     symbol_t fname = first(line)->name;
@@ -5577,7 +5662,7 @@ object *fn_require (object *args, object *env) {
       eval(line, env);
       return tee;
     }
-    line = read(glibrary);
+    line = sread(glibrary);
   }
   return nil;
 }
@@ -5589,13 +5674,13 @@ object *fn_require (object *args, object *env) {
 object *fn_listlibrary (object *args, object *env) {
   (void) args, (void) env;
   GlobalStringIndex = 0;
-  object *line = read(glibrary);
+  object *line = sread(glibrary);
   while (line != NULL) {
     builtin_t bname = builtin(first(line)->name);
     if (bname == DEFUN || bname == DEFVAR) {
       printsymbol(second(line), pserial); pserial(' ');
     }
-    line = read(glibrary);
+    line = sread(glibrary);
   }
   return bsymbol(NOTHING);
 }
@@ -5767,35 +5852,34 @@ object *fn_directory (object *args, object *env) {
   Evaluates the forms with str bound to a wifi-stream.
 */
 object *sp_withclient (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
+
   TODO1(sp_withclient, nil);
-#else
-  object *params = checkarguments(args, 1, 3);
-  object *var = first(params);
-  char buffer[BUFFERSIZE];
-  params = cdr(params);
-  int n;
-  if (params == NULL) {
-    client = server.available();
-    if (!client) return nil;
-    n = 2;
-  } else {
-    object *address = eval(first(params), env);
-    object *port = eval(second(params), env);
-    int success;
-    if (stringp(address)) success = client.connect(cstring(address, buffer, BUFFERSIZE), checkinteger(port));
-    else if (integerp(address)) success = client.connect(address->integer, checkinteger(port));
-    else error2("invalid address");
-    if (!success) return nil;
-    n = 1;
-  }
-  object *pair = cons(var, stream(WIFISTREAM, n));
-  push(pair,env);
-  object *forms = cdr(args);
-  object *result = eval(tf_progn(forms,env), env);
-  client.stop();
-  return result;
-#endif
+
+  // object *params = checkarguments(args, 1, 3);
+  // object *var = first(params);
+  // char buffer[BUFFERSIZE];
+  // params = cdr(params);
+  // int n;
+  // if (params == NULL) {
+  //   client = server.available();
+  //   if (!client) return nil;
+  //   n = 2;
+  // } else {
+  //   object *address = eval(first(params), env);
+  //   object *port = eval(second(params), env);
+  //   int success;
+  //   if (stringp(address)) success = client.connect(cstring(address, buffer, BUFFERSIZE), checkinteger(port));
+  //   else if (integerp(address)) success = client.connect(address->integer, checkinteger(port));
+  //   else error2("invalid address");
+  //   if (!success) return nil;
+  //   n = 1;
+  // }
+  // object *pair = cons(var, stream(WIFISTREAM, n));
+  // push(pair,env);
+  // object *forms = cdr(args);
+  // object *result = eval(tf_progn(forms,env), env);
+  // client.stop();
+  // return result;
 }
 
 /*
@@ -5803,13 +5887,11 @@ object *sp_withclient (object *args, object *env) {
   Returns the number of bytes available for reading from the wifi-stream, or zero if no bytes are available.
 */
 object *fn_available (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
   TODO1(fn_available, nil);
-#else
-  (void) env;
-  if (isstream(first(args))>>8 != WIFISTREAM) error2("invalid stream");
-  return number(client.available());
-#endif
+
+  // (void) env;
+  // if (isstream(first(args))>>8 != WIFISTREAM) error2("invalid stream");
+  // return number(client.available());
 }
 
 /*
@@ -5817,13 +5899,11 @@ object *fn_available (object *args, object *env) {
   Starts a Wi-Fi server running. It returns nil.
 */
 object *fn_wifiserver (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
   TODO1(fn_wifiserver, nil);
-#else
-  (void) args, (void) env;
-  server.begin();
-  return nil;
-#endif
+
+  // (void) args, (void) env;
+  // server.begin();
+  // return nil;
 }
 
 /*
@@ -5832,28 +5912,26 @@ object *fn_wifiserver (object *args, object *env) {
   Returns the IP address as a string or nil if unsuccessful.
 */
 object *fn_wifisoftap (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
   TODO1(fn_wifisoftap, nil);
-#else
-  (void) env;
-  char ssid[33], pass[65];
-  if (args == NULL) return WiFi.softAPdisconnect(true) ? tee : nil;
-  object *first = first(args); args = cdr(args);
-  if (args == NULL) WiFi.softAP(cstring(first, ssid, 33));
-  else {
-    object *second = first(args);
-    args = cdr(args);
-    int channel = 1;
-    bool hidden = false;
-    if (args != NULL) {
-      channel = checkinteger(first(args));
-      args = cdr(args);
-      if (args != NULL) hidden = (first(args) != nil);
-    }
-    WiFi.softAP(cstring(first, ssid, 33), cstring(second, pass, 65), channel, hidden);
-  }
-  return iptostring(WiFi.softAPIP());
-#endif
+
+  // (void) env;
+  // char ssid[33], pass[65];
+  // if (args == NULL) return WiFi.softAPdisconnect(true) ? tee : nil;
+  // object *first = first(args); args = cdr(args);
+  // if (args == NULL) WiFi.softAP(cstring(first, ssid, 33));
+  // else {
+  //   object *second = first(args);
+  //   args = cdr(args);
+  //   int channel = 1;
+  //   bool hidden = false;
+  //   if (args != NULL) {
+  //     channel = checkinteger(first(args));
+  //     args = cdr(args);
+  //     if (args != NULL) hidden = (first(args) != nil);
+  //   }
+  //   WiFi.softAP(cstring(first, ssid, 33), cstring(second, pass, 65), channel, hidden);
+  // }
+  // return iptostring(WiFi.softAPIP());
 }
 
 /*
@@ -5861,13 +5939,12 @@ object *fn_wifisoftap (object *args, object *env) {
   Returns t or nil to indicate if the client on stream is connected.
 */
 object *fn_connected (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
+
   TODO1(fn_connected, nil);
-#else
-  (void) env;
-  if (isstream(first(args))>>8 != WIFISTREAM) error2("invalid stream");
-  return client.connected() ? tee : nil;
-#endif
+
+  // (void) env;
+  // if (isstream(first(args))>>8 != WIFISTREAM) error2("invalid stream");
+  // return client.connected() ? tee : nil;
 }
 
 /*
@@ -5875,12 +5952,10 @@ object *fn_connected (object *args, object *env) {
   Returns the IP address of the local network as a string.
 */
 object *fn_wifilocalip (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
   TODO1(fn_wifilocalip, nil);
-#else
-  (void) args, (void) env;
-  return iptostring(WiFi.localIP());
-#endif
+
+  // (void) args, (void) env;
+  // return iptostring(WiFi.localIP());
 }
 
 /*
@@ -5888,21 +5963,20 @@ object *fn_wifilocalip (object *args, object *env) {
   Connects to the Wi-Fi network ssid using password pass. It returns the IP address as a string.
 */
 object *fn_wificonnect (object *args, object *env) {
-#if defined(__EMSCRIPTEN__)
+
   TODO1(fn_wificonnect, nil);
-#else
-  (void) env;
-  char ssid[33], pass[65];
-  if (args == NULL) { WiFi.disconnect(true); return nil; }
-  if (cdr(args) == NULL) WiFi.begin(cstring(first(args), ssid, 33));
-  else WiFi.begin(cstring(first(args), ssid, 33), cstring(second(args), pass, 65));
-  int result = WiFi.waitForConnectResult();
-  if (result == WL_CONNECTED) return iptostring(WiFi.localIP());
-  else if (result == WL_NO_SSID_AVAIL) error2("network not found");
-  else if (result == WL_CONNECT_FAILED) error2("connection failed");
-  else error2("unable to connect");
-  return nil;
-#endif
+
+  // (void) env;
+  // char ssid[33], pass[65];
+  // if (args == NULL) { WiFi.disconnect(true); return nil; }
+  // if (cdr(args) == NULL) WiFi.begin(cstring(first(args), ssid, 33));
+  // else WiFi.begin(cstring(first(args), ssid, 33), cstring(second(args), pass, 65));
+  // int result = WiFi.waitForConnectResult();
+  // if (result == WL_CONNECTED) return iptostring(WiFi.localIP());
+  // else if (result == WL_NO_SSID_AVAIL) error2("network not found");
+  // else if (result == WL_CONNECT_FAILED) error2("connection failed");
+  // else error2("unable to connect");
+  // return nil;
 }
 
 // Graphics functions
@@ -7385,7 +7459,7 @@ bool findsubstring (char *part, builtin_t name) {
   return (strstr(table(n?0:1)[n?name:name-tablesize(0)].string, part) != NULL);
 }
 
-#if !defined(__EMSCRIPTEN__)
+/*
 // Replaced by yield_loop()
 void testescape () {
   static unsigned long n;
@@ -7393,7 +7467,7 @@ void testescape () {
   n = millis();
   if (Serial.available() && Serial.read() == '~') error2("escape!");
 }
-#endif
+*/
 
 /*
   colonp - check that a user-defined symbol starts with a colon and is therefore a keyword
@@ -7435,13 +7509,13 @@ object *eval (object *form, object *env) {
   bool stackpos;
   int TC=0;
   EVAL:
-#if defined(__EMSCRIPTEN__)
+
   // Allow background tasks to run
   yield_loop();
-#endif
+
   // Enough space?
   // Serial.println((uint32_t)StackBottom - (uint32_t)&stackpos); // Find best MAX_STACK value
-  if ((uint32_t)StackBottom - (uint32_t)&stackpos > MAX_STACK) { Context = NIL; error2("stack overflow"); }
+  if ((uintptr_t)StackBottom - (uintptr_t)&stackpos > MAX_STACK) { Context = NIL; error2("stack overflow"); }
   if (Freespace <= WORKSPACESIZE>>4) gc(form, env);
   // Escape
   if (tstflag(ESCAPE)) { clrflag(ESCAPE); error2("escape!");}
@@ -7615,13 +7689,9 @@ object *eval (object *form, object *env) {
 */
 void pserial (char c) {
   LastPrint = c;
-#if defined(__EMSCRIPTEN__)
+
   if (c == '\n') putchar('\r');
   putchar(c);
-#else
-  if (c == '\n') Serial.write('\r');
-  Serial.write(c);
-#endif
 }
 
 const char ControlCodes[] = "Null\0SOH\0STX\0ETX\0EOT\0ENQ\0ACK\0Bell\0Backspace\0Tab\0Newline\0VT\0"
@@ -7822,7 +7892,10 @@ void pfloat (float f, pfun_t pfun) {
 /*
   pln - prints a newline to the specified stream
 */
-inline void pln (pfun_t pfun) {
+#if defined(__EMSCRIPTEN__)
+inline
+#endif
+void pln (pfun_t pfun) {
   pfun('\n');
 }
 
@@ -7911,12 +7984,12 @@ int glibrary () {
 */
 void loadfromlibrary (object *env) {
   GlobalStringIndex = 0;
-  object *line = read(glibrary);
+  object *line = sread(glibrary);
   while (line != NULL) {
     protect(line);
     eval(line, env);
     unprotect();
-    line = read(glibrary);
+    line = sread(glibrary);
   }
 }
 
@@ -7930,27 +8003,16 @@ volatile uint8_t KybdAvailable = 0;
 
 // Parenthesis highlighting
 void esc (int p, char c) {
-#if defined(__EMSCRIPTEN__)
+
   putchar('\e'); putchar('[');
   putchar((char)('0'+ p/100));
   putchar((char)('0'+ (p/10) % 10));
   putchar((char)('0'+ p % 10));
   putchar(c);
-#else
-  Serial.write('\e'); Serial.write('[');
-  Serial.write((char)('0'+ p/100));
-  Serial.write((char)('0'+ (p/10) % 10));
-  Serial.write((char)('0'+ p % 10));
-  Serial.write(c);
-#endif
 }
 
 void hilight (char c) {
-#if defined(__EMSCRIPTEN__)
   putchar('\e'); putchar('['); putchar(c); putchar('m');
-#else
-  Serial.write('\e'); Serial.write('['); Serial.write(c); Serial.write('m');
-#endif
 }
 
 /*
@@ -8029,13 +8091,11 @@ void processkey (char c) {
   return;
 }
 
-#if defined(__EMSCRIPTEN__)
 // Console input buffer, position and length
 const char *input_buf = NULL;
 int input_pos = 0;
 int input_len = 0;
 bool loop_done = false;
-#endif
 
 /*
   gserial - gets a character from the serial port
@@ -8046,8 +8106,6 @@ int gserial () {
     LastChar = 0;
     return temp;
   }
-
-  #if defined(__EMSCRIPTEN__)
 
   //  Return next char from the buffer
   if (input_pos >= input_len) {
@@ -8063,23 +8121,24 @@ int gserial () {
 
   return input_buf[input_pos++];
 
-#elif defined(lineeditor)
-  while (!KybdAvailable) {
-    while (!Serial.available());
-    char temp = Serial.read();
-    processkey(temp);
-  }
-  if (ReadPtr != WritePtr) return KybdBuf[ReadPtr++];
-  KybdAvailable = 0;
-  WritePtr = 0;
-  return '\n';
-#else
-  unsigned long start = millis();
-  while (!Serial.available()) { delay(1); if (millis() - start > 1000) clrflag(NOECHO); }
-  char temp = Serial.read();
-  if (temp != '\n' && !tstflag(NOECHO)) pserial(temp);
-  return temp;
-#endif
+// #if defined(lineeditor)
+//   while (!KybdAvailable) {
+//     while (!Serial.available());
+//     char temp = Serial.read();
+//     processkey(temp);
+//   }
+//   if (ReadPtr != WritePtr) return KybdBuf[ReadPtr++];
+//   KybdAvailable = 0;
+//   WritePtr = 0;
+//   return '\n';
+// #else
+//   unsigned long start = millis();
+//   while (!Serial.available()) { delay(1); if (millis() - start > 1000) clrflag(NOECHO); }
+//   char temp = Serial.read();
+//   if (temp != '\n' && !tstflag(NOECHO)) pserial(temp);
+//   return temp;
+// #endif
+
 }
 
 /*
@@ -8143,13 +8202,13 @@ object *nextitem (gfun_t gfun) {
     else if (ch == '\'') return nextitem(gfun);
     else if (ch == '.') {
       setflag(NOESC);
-      object *result = eval(read(gfun), NULL);
+      object *result = eval(sread(gfun), NULL);
       clrflag(NOESC);
       return result;
     }
-    else if (ch == '(') { LastChar = ch; return readarray(1, read(gfun)); }
+    else if (ch == '(') { LastChar = ch; return readarray(1, sread(gfun)); }
     else if (ch == '*') return readbitarray(gfun);
-    else if (ch >= '1' && ch <= '9' && (gfun() & ~0x20) == 'A') return readarray(ch - '0', read(gfun));
+    else if (ch >= '1' && ch <= '9' && (gfun() & ~0x20) == 'A') return readarray(ch - '0', sread(gfun));
     else error2("illegal character after #");
     ch = gfun();
   }
@@ -8223,9 +8282,9 @@ object *readrest (gfun_t gfun) {
     if (item == (object *)BRA) {
       item = readrest(gfun);
     } else if (item == (object *)QUO) {
-      item = cons(bsymbol(QUOTE), cons(read(gfun), NULL));
+      item = cons(bsymbol(QUOTE), cons(sread(gfun), NULL));
     } else if (item == (object *)DOT) {
-      tail->cdr = read(gfun);
+      tail->cdr = sread(gfun);
       if (readrest(gfun) != NULL) error2("malformed list");
       return head;
     } else {
@@ -8242,12 +8301,12 @@ object *readrest (gfun_t gfun) {
 /*
   read - recursively reads a Lisp object from the stream gfun and returns it
 */
-object *read (gfun_t gfun) {
+object *sread (gfun_t gfun) {
   object *item = nextitem(gfun);
   if (item == (object *)KET) error2("incomplete list");
   if (item == (object *)BRA) return readrest(gfun);
-  if (item == (object *)DOT) return read(gfun);
-  if (item == (object *)QUO) return cons(bsymbol(QUOTE), cons(read(gfun), NULL));
+  if (item == (object *)DOT) return sread(gfun);
+  if (item == (object *)QUO) return cons(bsymbol(QUOTE), cons(sread(gfun), NULL));
   return item;
 }
 
@@ -8286,16 +8345,15 @@ void print_version() {
 }
 
 void setup () {
-#if !defined(__EMSCRIPTEN__)
-  Serial.begin(9600);
-  int start = millis();
-  while ((millis() - start) < 5000) { if (Serial) break; }
-  #if defined(BOARD_HAS_PSRAM)
-  if (!psramInit()) { Serial.print("the PSRAM couldn't be initialized"); for(;;); }
-  Workspace = (object*) ps_malloc(WORKSPACESIZE*8);
-  if (!Workspace) { Serial.print("the Workspace couldn't be allocated"); for(;;); }
-  #endif
-#endif
+
+  // Serial.begin(9600);
+  // int start = millis();
+  // while ((millis() - start) < 5000) { if (Serial) break; }
+  // #if defined(BOARD_HAS_PSRAM)
+  // if (!psramInit()) { Serial.print("the PSRAM couldn't be initialized"); for(;;); }
+  // Workspace = (object*) ps_malloc(WORKSPACESIZE*8);
+  // if (!Workspace) { Serial.print("the Workspace couldn't be allocated"); for(;;); }
+  // #endif
 
   int stackhere = 0; StackBottom = &stackhere;
   initworkspace();
@@ -8331,7 +8389,7 @@ void repl (object *env) {
     // pserial('>'); pserial(' '); // TODO:
     Context = NIL;
 
-    object *line = read(gserial);
+    object *line = sread(gserial);
 
     // Break handling
     if (BreakLevel) {
@@ -8354,7 +8412,7 @@ void repl (object *env) {
     printobject(line, pserial);
     unprotect();
     pfl(pserial);
-    pln(pserial);
+    // pln(pserial);
   }
 }
 
@@ -8395,12 +8453,19 @@ void loop () {
   repl(NULL);
 }
 
-// WebAssembly ***************************************************************
+// ***************************************************************
 #if defined(__EMSCRIPTEN__)
 
 EM_ASYNC_JS(int, wait_for_tick_on_host, (), {
   return await ulisp.wait_for_tick();
 });
+
+#else
+// TODO:
+bool wait_for_tick_on_host () {
+  return true;
+}
+#endif
 
 bool wait_for_tick () {
   steps++;
@@ -8443,9 +8508,28 @@ void evaluate (const char *line) {
   loop();
 }
 
+#if defined(__STANDALONE__)
+
 // For standalone build
-int main() {
-  loop();
+int main(int argc, char *argv[]) {
+
+  setup();
+  linenoiseSetMultiLine(1); // Wrap to multiple rows for long line
+  linenoiseHistorySetMaxLen(1000);
+
+  const char prompt[] = "> ";
+
+  char* line;
+  while((line = linenoise(prompt)) != NULL) {
+
+    // TODO: If there are unclosed parentheses, enter multi-line
+
+    linenoiseHistoryAdd(line);
+    evaluate(line);
+    // linenoiseClearScreen(void);
+
+    linenoiseFree(line);
+  }
 }
 
 #endif

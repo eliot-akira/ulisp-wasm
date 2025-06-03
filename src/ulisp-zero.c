@@ -1,9 +1,16 @@
 /**
- * Based on uLisp Zero 1.1 - https://github.com/technoblogy/ulisp-zero
- * TODO: Replace Arduino dependency: NULL, uintptr_t, etc.
+ * uLisp Zero ported to C99 from Arduino
+ * Based on uLisp Zero 1.1 - http://www.ulisp.com
+ * MIT license: https://opensource.org/licenses/MIT
  */
-
+#include <math.h>
 #include <setjmp.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 // C Macros
 
@@ -41,8 +48,8 @@ typedef unsigned int symbol_t;
 typedef struct sobject {
   union {
     struct {
-      sobject *car;
-      sobject *cdr;
+      struct sobject *car;
+      struct sobject *cdr;
     };
     struct {
       unsigned int type;
@@ -57,11 +64,27 @@ typedef struct sobject {
 typedef object *(*fn_ptr_type)(object *, object *);
 
 typedef struct {
-  PGM_P string;
+  const char *string;
   fn_ptr_type fptr;
   int min;
   int max;
 } tbl_entry_t;
+
+// Forward reference
+void error(const char *string);
+void pfl();
+void pfstring(const char *string);
+void pln();
+void pchar(char c);
+void printobject(object *form);
+char *lookupbuiltin(symbol_t name);
+object *eval(object *form, object *env);
+object *read();
+
+// Polyfill
+#define PSTR
+#define pgm_read_word(_x)     *(_x)
+#define isspace(x)            (x == ' ' || x == '\n' || x == '\r' || x == '\t')
 
 // Workspace - sizes in bytes
 #define WORDALIGNED __attribute__((aligned (2)))
@@ -109,7 +132,7 @@ object *myalloc () {
   return temp;
 }
 
-inline void myfree (object *obj) {
+void myfree (object *obj) {
   car(obj) = NULL;
   cdr(obj) = Freelist;
   Freelist = obj;
@@ -170,14 +193,14 @@ void gc (object *form, object *env) {
 
 // Error handling
 
-void error (PGM_P string) {
+void error (const char *string) {
   pfl(); pfstring(PSTR("Error: "));
   pfstring(string); pln();
   GCStack = NULL;
   longjmp(exception, 1);
 }
 
-void error2 (object *symbol, PGM_P string) {
+void error2 (object *symbol, const char *string) {
   pfl(); pfstring(PSTR("Error: "));
   if (symbol == NULL) pfstring(PSTR("function "));
   else { pchar('\''); printobject(symbol); pfstring(PSTR("' ")); }
@@ -188,19 +211,19 @@ void error2 (object *symbol, PGM_P string) {
 
 // Helper functions
 
-boolean consp (object *x) {
+bool consp (object *x) {
   if (x == NULL) return false;
   unsigned int type = x->type;
   return type >= PAIR || type == ZERO;
 }
 
-boolean atom (object *x) {
+bool atom (object *x) {
   if (x == NULL) return true;
   unsigned int type = x->type;
   return type < PAIR && type != ZERO;
 }
 
-boolean listp (object *x) {
+bool listp (object *x) {
   if (x == NULL) return true;
   unsigned int type = x->type;
   return type >= PAIR || type == ZERO;
@@ -224,7 +247,7 @@ int pack40 (char *buffer) {
   return (((toradix40(buffer[0]) * 40) + toradix40(buffer[1])) * 40 + toradix40(buffer[2]));
 }
 
-boolean valid40 (char *buffer) {
+bool valid40 (char *buffer) {
  return (toradix40(buffer[0]) >= 0 && toradix40(buffer[1]) >= 0 && toradix40(buffer[2]) >= 0);
 }
 
@@ -321,13 +344,13 @@ object *closure (object *fname, object *function, object *args, object **env) {
 
 // Checked car and cdr
 
-inline object *carx (object *arg) {
+object *carx (object *arg) {
   if (!listp(arg)) error(PSTR("Can't take car"));
   if (arg == nil) return nil;
   return car(arg);
 }
 
-inline object *cdrx (object *arg) {
+object *cdrx (object *arg) {
   if (!listp(arg)) error(PSTR("Can't take cdr"));
   if (arg == nil) return nil;
   return cdr(arg);
@@ -442,32 +465,32 @@ object *fn_locals (object *args, object *env) {
 
 // Built-in procedure names - stored in PROGMEM
 
-const char string0[] PROGMEM = "symbols";
-const char string1[] PROGMEM = "nil";
-const char string2[] PROGMEM = "t";
-const char string3[] PROGMEM = "lambda";
-const char string4[] PROGMEM = "special_forms";
-const char string5[] PROGMEM = "quote";
-const char string6[] PROGMEM = "defun";
-const char string7[] PROGMEM = "defvar";
-const char string8[] PROGMEM = "setq";
-const char string9[] PROGMEM = "if";
-const char string10[] PROGMEM = "functions";
-const char string11[] PROGMEM = "not";
-const char string12[] PROGMEM = "null";
-const char string13[] PROGMEM = "cons";
-const char string14[] PROGMEM = "atom";
-const char string15[] PROGMEM = "listp";
-const char string16[] PROGMEM = "consp";
-const char string17[] PROGMEM = "symbolp";
-const char string18[] PROGMEM = "eq";
-const char string19[] PROGMEM = "car";
-const char string20[] PROGMEM = "cdr";
-const char string21[] PROGMEM = "eval";
-const char string22[] PROGMEM = "globals";
-const char string23[] PROGMEM = "locals";
+const char string0[] = "symbols";
+const char string1[] = "nil";
+const char string2[] = "t";
+const char string3[] = "lambda";
+const char string4[] = "special_forms";
+const char string5[] = "quote";
+const char string6[] = "defun";
+const char string7[] = "defvar";
+const char string8[] = "setq";
+const char string9[] = "if";
+const char string10[] = "functions";
+const char string11[] = "not";
+const char string12[] = "null";
+const char string13[] = "cons";
+const char string14[] = "atom";
+const char string15[] = "listp";
+const char string16[] = "consp";
+const char string17[] = "symbolp";
+const char string18[] = "eq";
+const char string19[] = "car";
+const char string20[] = "cdr";
+const char string21[] = "eval";
+const char string22[] = "globals";
+const char string23[] = "locals";
 
-const tbl_entry_t lookup_table[] PROGMEM = {
+const tbl_entry_t lookup_table[] = {
   { string0, NULL, NIL, NIL },
   { string1, NULL, 0, 0 },
   { string2, NULL, 1, 0 },
@@ -499,7 +522,8 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 int builtin (char* n) {
   int entry = 0;
   while (entry < ENDFUNCTIONS) {
-   if (strcmp_P(n, (PGM_P)pgm_read_word(&lookup_table[entry].string)) == 0 )
+  //  if (strcmp_P(n, (PGM_P)pgm_read_word(&lookup_table[entry].string)) == 0 )
+  if (strcasecmp(n, (char*)(&lookup_table[entry].string)) == 0)
       return entry;
     entry++;
   }
@@ -519,7 +543,8 @@ int lookupmax (symbol_t name) {
 }
 
 char *lookupbuiltin (symbol_t name) {
-  strcpy_P(Buffer, (PGM_P)(pgm_read_word(&lookup_table[name].string)));
+  // strcpy_P(Buffer, (PGM_P)(pgm_read_word(&lookup_table[name].string)));
+  strcpy(Buffer, (const char *) (&lookup_table[name].string));
   return Buffer;
 }
 
@@ -605,18 +630,17 @@ object *eval (object *form, object *env) {
 
 void pchar (char c) {
   LastPrint = c;
-  Serial.write(c);
-  if (c == '\r') Serial.write('\n');
+  putchar(c); // Serial.write(c);
+  if (c == '\r') putchar('\n'); // Serial.write('\n');
 }
 
 void pstring (char *s) {
   while (*s) pchar(*s++);
 }
 
-void pfstring (PGM_P s) {
-  int p = (int)s;
+void pfstring (const char *s) {
   while (1) {
-    char c = pgm_read_byte(p++);
+    char c = *s++;
     if (c == 0) return;
     pchar(c);
   }
@@ -627,7 +651,7 @@ void pint (int i) {
   if (i<0) pchar('-');
   for (int d=10000; d>0; d=d/10) {
     int j = i/d;
-    if (j!=0 || lead || d==1) { pchar(abs(j)+'0'); lead=1;}
+    if (j!=0 || lead || d==1) { pchar(abs(j)+'0'); lead=1; }
     i = i - j*d;
   }
 }
@@ -640,7 +664,7 @@ void pfl () {
   if (LastPrint != '\r') pchar('\r');
 }
 
-void printobject(object *form){
+void printobject(object *form) {
   if (form == NULL) pfstring(PSTR("nil"));
   else if (listp(form)) {
     pchar('(');
@@ -668,8 +692,8 @@ int gchar () {
     LastChar = 0;
     return temp;
   }
-  while (!Serial.available()) ;
-  char temp = Serial.read();
+  // while (!Serial.available()) ;
+  char temp = getchar(); // Serial.read();
   if (temp != '\r') pchar(temp);
   return temp;
 }
@@ -683,7 +707,8 @@ object *nextitem() {
     ch = '(';
   }
   if (ch == '\r') ch = gchar();
-  if (ch == EOF) exit(0);
+  // if (ch == EOF) exit(0);
+  if (ch == EOF) return nil; // -1
 
   if (ch == ')') return (object *)KET;
   if (ch == '(') return (object *)BRA;
@@ -747,8 +772,8 @@ void initenv() {
 }
 
 void setup() {
-  Serial.begin(9600);
-  while (!Serial);  // wait for Serial to initialize
+  // Serial.begin(9600);
+  // while (!Serial);  // wait for Serial to initialize
   initworkspace();
   initenv();
   pfstring(PSTR("uLisp Zero 1.1")); pln();
@@ -777,4 +802,10 @@ void repl(object *env) {
 void loop() {
   setjmp(exception);
   repl(NULL);
+}
+
+int main() {
+  setup();
+  loop();
+  return 0;
 }

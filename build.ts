@@ -3,7 +3,6 @@ import os from 'node:os'
 import { $ } from 'bun'
 
 const [command, ...args] = process.argv.slice(2)
-
 const { uid, gid } = os.userInfo()
 
 switch (command) {
