@@ -53,7 +53,7 @@ export default function Page() {
         lisp = createLisp()
         lisp = await lisp
 
-        console.log('uLisp', lisp.version())
+        console.log('uLisp', lisp) // .version()
         evaluate() // Run example code
       }
     })().catch(console.error)

@@ -10,9 +10,8 @@ Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on 
 
 Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp ESP32](https://github.com/technoblogy/ulisp-esp), [BL602 RISC-V fork](https://github.com/lupyuen/ulisp-bl602)
 
-- [x] Rewrite to upgrade from uLisp 3.6 to 4.6b
+- [x] Rewrite and upgrade from uLisp 3.6 to 4.6b, 4.7, 4.8d
 - [x] Load code and step through each instruction
-- [x] Merge changes from uLisp 4.7
 - [ ] Replace devices with host events for emulation
   - [ ] Analog port read/write
   - [ ] Digital port read/write
@@ -27,7 +26,7 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
   - [ ] [Extended RAM](http://www.ulisp.com/show?4UKH) - Define `BOARD_HAS_PSRAM`
 - [x] REPL (read-eval-print loop) in web interface
 - [x] REPL on server side
-- [ ] REPL and line editor in uLsip using serial interface
+- [ ] REPL and line editor in uLisp using serial interface
 - [ ] CLI on server side to run uLisp programs
 - [x] Run in the browser
 - [x] Run on JavaScript runtimes: Node, Bun, Deno
@@ -227,3 +226,13 @@ Sets the display orientation for subsequent graphics commands; values are 0, 1, 
 ### `set-text-size`
 
 ### `set-text-wrap`
+
+## I2C interface
+
+- I2Cinit
+- I2Cread
+- I2Cwrite
+- I2Cstart
+- I2Crestart
+- I2Cstop
+

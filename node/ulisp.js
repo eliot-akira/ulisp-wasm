@@ -1237,13 +1237,13 @@ async function createWasm() {
 // End JS library code
 
 var ASM_CONSTS = {
-  52164: () => { return performance.now(); },  
- 52194: ($0) => { return performance.now() - $0; },  
- 52229: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 52274: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 52316: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
- 52361: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
- 52403: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
+  52884: () => { return performance.now(); },  
+ 52914: ($0) => { return performance.now() - $0; },  
+ 52949: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 52994: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 53036: ($0, $1) => { return ulisp.call(UTF8ToString($0), $1); },  
+ 53081: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); },  
+ 53123: ($0, $1, $2) => { ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await ulisp.delay( millisecs ); }); }
 function __asyncjs__wait_for_tick_on_host() { return Asyncify.handleAsync(async () => { return await ulisp.wait_for_tick(); }); }

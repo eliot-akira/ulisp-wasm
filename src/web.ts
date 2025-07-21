@@ -10,7 +10,7 @@ export async function createLisp() {
     // run,
     // Called from Lisp code running on WASM
     call(command, ...args) {
-      console.log('ulisp.call', command, ...args)
+      console.log('ulisp called', command, ...args)
       switch (command) {
         case 'analogRead':
           return 0

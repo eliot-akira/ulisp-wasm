@@ -1,6 +1,6 @@
 MIT License
 
-ulisp-web - Copyright (c) 2024 Eliot Akira
+ulisp-wasm - Copyright (c) 2024 Eliot Akira
 
 Based on uLisp - Copyright (c) 2016 David Johnson-Davies
 
