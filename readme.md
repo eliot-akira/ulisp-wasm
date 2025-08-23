@@ -1,5 +1,7 @@
 # uLisp on WebAssembly
 
+![Screencast](public/media/screencast.gif)
+
 [uLisp](http://www.ulisp.com) is a programming language for microcontrollers and embedded devices. This project `ulisp-wasm` is a port of uLisp to WebAssembly that runs in the browser and on server side.
 
 See [the Playground page](https://eliot-akira.github.io/ulisp-wasm/).
