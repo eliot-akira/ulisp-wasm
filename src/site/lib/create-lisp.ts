@@ -103,12 +103,15 @@ export async function createLisp(options = {}) {
     const lisp = {
       worker: null,
       request: null,
+      running: false,
       async eval(code) {
-        if (!lisp.worker || !lisp.request) {
+        if (!lisp.worker || !lisp.request || lisp.running) {
           await lisp.restart()
         }
 
-        return await lisp.request.send(
+        lisp.running = true
+
+        const result = await lisp.request.send(
           {
             code,
             wasmPath
@@ -117,6 +120,9 @@ export async function createLisp(options = {}) {
             timeout
           }
         )
+        lisp.running = false
+
+        return result
       },
       async restart() {
         if (lisp.worker) {

@@ -68,10 +68,10 @@ export default function Page() {
         }
 
         // Don't run shared code automatically
-        const shouldRunAutomatically = codeFromHash == null
+        // const shouldRunAutomatically = !Boolean(codeFromHash)
 
         const code =
-          codeFromHash != null
+          Boolean(codeFromHash)
             ? codeFromHash
             : `(defun fib (n)
   (if (< n 3) 1
@@ -93,7 +93,10 @@ export default function Page() {
           eval: evaluate
         })
 
-        if (shouldRunAutomatically) evaluate() // Run example code
+        editorViewRef.current.focus()
+
+        // if (shouldRunAutomatically)
+        evaluate() // Run example code
       }
     })().catch(console.error)
 
@@ -101,9 +104,9 @@ export default function Page() {
       // Clean up
       editorViewRef.current && editorViewRef.current.destroy()
 
-      if (lisp) {
-        lisp.stop()
-      }
+      // if (lisp) {
+      //   lisp.stop()
+      // }
       // lisp = null
     }
   }, [editorRef, evalRef, editorViewRef])
@@ -156,7 +159,8 @@ export default function Page() {
 
               const code = editorViewRef.current.state.doc.toString()
               const hash = await base64Url.encode(code)
-              console.log('URL', hash)
+
+              // console.log('URL', hash)
 
               window.location.hash = hash
 
@@ -188,7 +192,7 @@ export default function Page() {
           </div>
 
           <pre className="font-mono py-2 px-4">
-            <code>{consoleOut}</code>
+            <code className='text-wrap'>{consoleOut}</code>
           </pre>
         </section>
       </div>
