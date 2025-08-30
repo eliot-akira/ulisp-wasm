@@ -12,10 +12,11 @@ switch (command) {
   case 'build:web':
     await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc \
     src/ulisp.c -I src -o public/ulisp.js \
+    -sASSERTIONS \
     -O2 -fms-extensions -sENVIRONMENT=web -sEXPORT_NAME=createLispWasmModule \
     -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
     -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free', '_print_version', '_stop_loop' ]" \
-    -s "EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
+    -s "EXPORTED_RUNTIME_METHODS=[ 'ccall', 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
 
     {
       const file = 'src/ulisp.js'
@@ -30,10 +31,12 @@ switch (command) {
    */
   case 'build:node':
     await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc \
-    src/ulisp.c -I src -o node/ulisp.js -O2 -fms-extensions -sENVIRONMENT=node \
-    -sEXPORT_NAME=createLispWasmModule -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
+    src/ulisp.c -I src -o node/ulisp.js \
+    -sASSERTIONS \
+    -O2 -fms-extensions -sENVIRONMENT=node -sEXPORT_NAME=createLispWasmModule \
+    -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
     -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free', '_print_version', '_stop_loop' ]" \
-    -s "EXPORTED_RUNTIME_METHODS=[ 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
+    -s "EXPORTED_RUNTIME_METHODS=[ 'ccall', 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
     /**
      * HACK: Patch output of Emscripten in node/ulisp.js
      *

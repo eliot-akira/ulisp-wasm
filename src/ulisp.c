@@ -9,7 +9,9 @@
 #define VERSION "4.8d"
 
 // Lisp Library
-const char LispLibrary[] = "";
+const char LispLibrary[] =
+  "(defvar version \"" VERSION "\")"
+;
 
 // Compile options
 
@@ -156,6 +158,28 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define BUILTINS           0xF4240000
 #define ENDFUNCTIONS       0x0BDC0000
 
+#if defined(__STANDALONE__) && !defined(__EMSCRIPTEN__) && !defined(__HAS_RANDOM__)
+
+int random (int max_num) {
+    int min_num = 0;
+    int result = 0, low_num = 0, hi_num = 0;
+
+    if (min_num < max_num)
+    {
+        low_num = min_num;
+        hi_num = max_num + 1; // include max_num in output
+    } else {
+        low_num = max_num + 1; // include max_num in output
+        hi_num = min_num;
+    }
+
+    srand(time(NULL));
+    result = (rand() % (hi_num - low_num)) + low_num;
+    return result;
+}
+#endif
+
+
 // Constants
 
 #define USERSTREAMS        16
@@ -221,7 +245,7 @@ typedef const struct {
   gstream_ptr_t gfunptr;
 } stream_entry_t;
 
-enum builtins: builtin_t { NIL, TEE, NOTHING, OPTIONAL, FEATURES, INITIALELEMENT, ELEMENTTYPE, TEST, COLONA, COLONB,
+enum builtin_t { NIL, TEE, NOTHING, OPTIONAL, FEATURES, INITIALELEMENT, ELEMENTTYPE, TEST, COLONA, COLONB,
 COLONC, BIT, AMPREST, LAMBDA, LET, LETSTAR, CLOSURE, PSTAR, QUOTE, DEFUN, DEFVAR, EQ, CAR, FIRST, CDR,
 REST, NTH, AREF, CHAR, STRINGFN, PINMODE, DIGITALWRITE, ANALOGREAD, REGISTER, FORMAT, 
  };
@@ -352,7 +376,7 @@ double analogRead(int pin) {
   #if defined(__EMSCRIPTEN__)
 
   return EM_ASM_DOUBLE({
-    return ulisp.call(UTF8ToString($0), $1);
+    return globalThis.ulisp.call(UTF8ToString($0), $1);
   }, "analogRead", pin);
 
   #else
@@ -366,7 +390,7 @@ void analogWrite(int pin, double value) {
   #if defined(__EMSCRIPTEN__)
 
   EM_ASM({
-    ulisp.call(UTF8ToString($0), $1, $2);
+    globalThis.ulisp.call(UTF8ToString($0), $1, $2);
   }, "analogWrite", pin, value);
 
   #else
@@ -380,7 +404,7 @@ int digitalRead(int pin) {
   #if defined(__EMSCRIPTEN__)
 
   return EM_ASM_INT({
-    return ulisp.call(UTF8ToString($0), $1);
+    return globalThis.ulisp.call(UTF8ToString($0), $1);
   }, "digitalRead", pin);
 
   #else
@@ -392,7 +416,7 @@ int digitalRead(int pin) {
 void digitalWrite(int pin, int mode) {
   #if defined(__EMSCRIPTEN__)
   EM_ASM({
-    ulisp.call(UTF8ToString($0), $1, $2);
+    globalThis.ulisp.call(UTF8ToString($0), $1, $2);
   }, "digitalWrite", pin, mode);
   #else
   // TODO:
@@ -403,7 +427,7 @@ void digitalWrite(int pin, int mode) {
 void pinMode(int pin, int mode) {
   #if defined(__EMSCRIPTEN__)
   EM_ASM({
-    ulisp.call(UTF8ToString($0), $1, $2);
+    globalThis.ulisp.call(UTF8ToString($0), $1, $2);
   }, "pinMode", pin, mode);  
   #else
   // TODO:
@@ -413,7 +437,7 @@ void pinMode(int pin, int mode) {
 
 #if defined(__EMSCRIPTEN__)
 EM_ASYNC_JS(void, delay_on_host, (int millisecs), {
-  await ulisp.delay( millisecs );
+  await globalThis.ulisp.delay( millisecs );
 });
 void delay (int millisecs) {
   delay_on_host(millisecs);
@@ -937,7 +961,7 @@ uint32_t FSRead32 (File file) {
   file.read(u8, 4);
   return data;
 }
-#elif defined(__EMSCRIPTEN__)
+#elif defined(__EMSCRIPTEN__) || defined(__STANDALONE__)
 void EpromWriteInt(int *addr, uintptr_t data) {
   TODO0(EpromWriteInt);
 }
@@ -950,7 +974,6 @@ void EpromWriteInt(int *addr, uintptr_t data) {
   EEPROM.write((*addr)++, data & 0xFF); EEPROM.write((*addr)++, data>>8 & 0xFF);
   EEPROM.write((*addr)++, data>>16 & 0xFF); EEPROM.write((*addr)++, data>>24 & 0xFF);
 }
-
 int EpromReadInt (int *addr) {
   uint8_t b0 = EEPROM.read((*addr)++); uint8_t b1 = EEPROM.read((*addr)++);
   uint8_t b2 = EEPROM.read((*addr)++); uint8_t b3 = EEPROM.read((*addr)++);
@@ -4334,10 +4357,10 @@ object *fn_abs (object *args, object *env) {
 object *fn_random (object *args, object *env) {
   (void) env;
   object *arg = first(args);
-#if defined(__EMSCRIPTEN__)
-  if (integerp(arg)) return number(random() % arg->integer);
-#else
+#if defined(__STANDALONE__) && !defined(__EMSCRIPTEN__) && !defined(__HAS_RANDOM__)
   if (integerp(arg)) return number(random(arg->integer));
+#else
+  if (integerp(arg)) return number(random() % arg->integer);
 #endif
   else if (floatp(arg)) return makefloat((float)rand()/((float)RAND_MAX/(arg->single_float)));
   else error(notanumber, arg);
@@ -8140,7 +8163,8 @@ void loadfromlibrary (object *env) {
 // For line editor
 const int TerminalWidth = 80;
 volatile int WritePtr = 0, ReadPtr = 0, LastWritePtr = 0;
-const int KybdBufSize = 333; // 42*8 - 3
+// 42*8 - 3 - Must be define and not const int
+#define KybdBufSize 333
 char KybdBuf[KybdBufSize];
 volatile uint8_t KybdAvailable = 0;
 
@@ -8598,10 +8622,10 @@ void ulisperror () {
   // client.stop(); // TODO:
 }
 
-int max_steps = 999999;
+int max_steps = 9999999;
 int steps = 0;
-bool should_limit_steps = true;
-bool should_wait_for_host = false; // TODO:
+bool should_limit_steps = false; // TODO:
+bool should_wait_for_host = true; // TODO:
 
 /*
   loop - Main execution loop
@@ -8625,7 +8649,7 @@ void loop () {
 #if defined(__EMSCRIPTEN__)
 
 EM_ASYNC_JS(int, wait_for_tick_on_host, (), {
-  return await ulisp.wait_for_tick();
+  return await globalThis.ulisp.wait_for_tick();
 });
 
 #else
@@ -8676,7 +8700,7 @@ void evaluate (const char *line) {
   loop();
 }
 
-#if defined(__STANDALONE__)
+#if defined(__STANDALONE__) && !defined(__HAS_MAIN__)
 
 // For standalone build
 int main(int argc, char *argv[]) {

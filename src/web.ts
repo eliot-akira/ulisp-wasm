@@ -1,7 +1,14 @@
 import createLispWasmModule from './ulisp.js'
 import { lispCreator } from '../node/common.js'
 
-export async function createLisp() {
+export async function createLisp(moduleArgs = {}) {
+
+  const {
+    wasmPath = '',
+    tick
+  } = moduleArgs
+
+
   /**
    * TODO: Module expects a global variable `ulisp`. Move them as callbacks
    * passed to createLispWasmModule().
@@ -33,12 +40,24 @@ export async function createLisp() {
     escape() {
       return 0 // Return 1 to stop the runtime
     },
-    wait_for_tick() {},
+    wait_for_tick() {
+      if (tick) return tick()
+    },
     stop() {}
   })
 
+
   return await lispCreator({
-    createLispWasmModule
+    createLispWasmModule(args = {}) {
+      return createLispWasmModule({
+        ...args,
+      locateFile(path, scriptPath) {
+        // scriptPath points to source during development
+        // console.log('path', wasmPath + path)
+        return wasmPath + path
+      },
+      })
+    }
   })
 
   // eval: evaluate,

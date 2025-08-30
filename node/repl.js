@@ -8,7 +8,9 @@ export async function createLispRepl(lisp, options = {}) {
     output = process.stdout,
   } = options
 
-  output.write(`uLisp 4.7d\n`) // TODO: Create constant to get version on uLisp side
+  output.write(`uLisp ${
+    await lisp.eval(`version`)
+  }\n`) // TODO: Create constant to get version on uLisp side
 
   const instance = repl.start({
     prompt: '> ',

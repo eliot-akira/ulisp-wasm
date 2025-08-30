@@ -40,7 +40,20 @@ export async function lispCreator({
     // Allocate memory for string
     const ptr = Module.stringToNewUTF8(`(progn ${code})`)
 
-    Module._evaluate(ptr)
+    // Module._evaluate(ptr) // Synchronous
+
+    /**
+     * Using EM_ASYNC_JS in C
+     * @see https://emscripten.org/docs/porting/asyncify.html#usage-with-ccall
+     * @see https://emscripten.org/docs/api_reference/preamble.js.html#ccall
+     */
+    await Module.ccall(
+      'evaluate', // Function name
+      'void', // Return type
+      ['number'], // Argument types
+      [ptr], // Arguments
+      { async: true } // Call options
+    )
 
     // Free it after use
     Module._free(ptr)
