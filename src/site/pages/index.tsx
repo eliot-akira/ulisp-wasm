@@ -82,7 +82,9 @@ export default function Page() {
         console.log('uLisp', lisp) // .version()
 
         const hash = window.location.hash.slice(1)
-        let dataFromHash = {}
+        let dataFromHash: {
+          code?: string
+        } = {}
         if (hash) {
           // console.log('Decode from hash', hash)
 
@@ -96,14 +98,10 @@ export default function Page() {
           }
         }
 
-        let { code } = dataFromHash
+        const { code = exampleCode } = dataFromHash
 
         // Don't run shared code automatically
         // const shouldRunAutomatically = !Boolean(dataFromHash.code)
-
-        code = Boolean(code) // Not empty
-          ? code
-          : exampleCode
 
         editorViewRef.current = editor.init($editor, code, {
           eval: evaluate
