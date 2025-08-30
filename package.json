@@ -12,7 +12,7 @@
     "generate:site": "node build/server/server.js",
     "clean:site": "rm -rf build",
     "build": "bun build:site",
-    "build:all": "bun build:site && bun build:web && bun build:node",
+    "build:all": "bun build:web && bun build:site && bun build:node",
     "build:web": "bun build.ts build:web",
     "build:node": "mkdir -p node && bun run build.ts build:node",
     "build:wasi": "mkdir -p wasi && bun build.ts build:wasi",

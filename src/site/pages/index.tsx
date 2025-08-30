@@ -121,8 +121,8 @@ export default function Page() {
   }, [editorRef, evalRef, editorViewRef])
 
   return (
-    <div className="lg:flex h-screen w-screen">
-      <div className="ui-panel lg:w-1/2 lg:pr-2 p-4">
+    <div className="md:flex h-screen w-screen">
+      <div className="ui-panel md:w-1/2 md:pr-2 p-4">
         <div className="h-10">
           <h1 className="font-semibold">uLisp-Wasm Playground</h1>
         </div>
@@ -135,7 +135,7 @@ export default function Page() {
         <div className="text-sm text-slate-700">Shortcut to run: CTRL or CMD + Enter</div>
       </div>
 
-      <div className="ui-panel lg:w-1/2 lg:pl-2 p-4">
+      <div className="ui-panel md:w-1/2 md:pl-2 p-4">
         <div className="ui-toolbar h-10 text-right">
           <button
             className="mx-2 py-1 px-2

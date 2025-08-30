@@ -8650,7 +8650,7 @@ void loop () {
 #if defined(__EMSCRIPTEN__)
 
 // Occasionally causes RuntimeError: unreachable executed
-// EM_ASYNC_JS(int, wait_for_tick_on_host, (), {
+// EM_ASYNC _JS(int, wait_for_tick_on_host, (), {
 //   return await globalThis.ulisp.wait_for_tick();
 // });
 
