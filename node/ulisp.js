@@ -1693,14 +1693,12 @@ var ASM_CONSTS = {
  55575: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await globalThis.ulisp.delay( millisecs ); }); }
-function __asyncjs__wait_for_tick_on_host() { return Asyncify.handleAsync(async () => { return await globalThis.ulisp.wait_for_tick(); }); }
+function wait_for_tick_on_host() { return globalThis.ulisp.wait_for_tick(); }
 var wasmImports = {
   /** @export */
   __assert_fail: ___assert_fail,
   /** @export */
   __asyncjs__delay_on_host,
-  /** @export */
-  __asyncjs__wait_for_tick_on_host,
   /** @export */
   _abort_js: __abort_js,
   /** @export */
@@ -1724,7 +1722,9 @@ var wasmImports = {
   /** @export */
   invoke_vi,
   /** @export */
-  invoke_vii
+  invoke_vii,
+  /** @export */
+  wait_for_tick_on_host
 };
 var wasmExports = await createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);

@@ -70,7 +70,9 @@ function createWorkerRequest(worker) {
   function cancelAll() {
     for (const [id, request] of requestMap) {
       clearTimeout(request.timeoutId)
-      request.reject(new Error('All requests cancelled'))
+      request.reject(
+        new Error('All requests cancelled')
+      )
     }
     requestMap.clear()
   }
@@ -88,13 +90,16 @@ export async function createLisp(options = {}) {
   const {
     wasmPath = window.location.origin + window.location.pathname, // Find Wasm file at current page URL
     timeout = 0, // Allow infinite loop - TODO: Optional
-    step // Optional callback for each step
+    step, // Optional callback for each step
+    print, // Optional callback for print
   } = options
 
   function handleStep(e) {
     if (e.data.step != null && step) {
       step(e.data.step)
-    }
+    } else if (e.data.print != null && print) {
+      print(e.data.print)
+    } 
   }
 
   async function restart() {

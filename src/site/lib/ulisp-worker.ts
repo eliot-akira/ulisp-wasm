@@ -4,7 +4,7 @@ let lisp
 
 async function handleMessage(e) {
 
-  const { id, data, action } = e.data
+  const { id, data, action, print } = e.data
 
   if (action) {
     console.log('Action', action)
@@ -21,6 +21,9 @@ async function handleMessage(e) {
       tick() {
         step++
         self.postMessage({ step })
+      },
+      print(arg: any) {
+        self.postMessage({ print: arg })
       }
     })
   }

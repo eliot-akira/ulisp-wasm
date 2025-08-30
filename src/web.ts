@@ -5,9 +5,9 @@ export async function createLisp(moduleArgs = {}) {
 
   const {
     wasmPath = '',
-    tick
+    tick,
+    print
   } = moduleArgs
-
 
   /**
    * TODO: Module expects a global variable `ulisp`. Move them as callbacks
@@ -43,11 +43,14 @@ export async function createLisp(moduleArgs = {}) {
     wait_for_tick() {
       if (tick) return tick()
     },
-    stop() {}
+    stop() {},
+    // print(arg) {
+    //   if (print) print(arg)
+    // },
   })
 
-
   return await lispCreator({
+    print,
     createLispWasmModule(args = {}) {
       return createLispWasmModule({
         ...args,

@@ -15,8 +15,10 @@ export default function Page() {
 
   const editorRef = useRef(null)
   const evalRef = useRef(null)
-
   const editorViewRef = useRef<EditorView>(null)
+
+  const consoleOutRef = useRef()
+  consoleOutRef.current = consoleOut
 
   useEffect(() => {
     const $editor = editorRef.current
@@ -27,12 +29,16 @@ export default function Page() {
       const code = editorViewRef.current.state.doc.toString()
       try {
         // setConsoleOut('..Evaluating')
+        setConsoleOut(' ')
+
         const result = await lisp.eval(code)
-        setConsoleOut(
-          result == null
-            ? ' ' // Prevent console output from collapsing - TODO: Do it with CSS
-            : result
-        )
+
+        // Already handled by print() below
+        // setConsoleOut(
+        //   result == null
+        //     ? ' ' // Prevent console output from collapsing - TODO: Do it with CSS
+        //     : result
+        // )
       } catch (e) {
         console.log('eval error', e)
       }
@@ -44,6 +50,10 @@ export default function Page() {
         lisp = createLisp({
           step(n: number) {
             setStep(n)
+          },
+          print(arg) {
+            const prev = consoleOutRef.current.trim()
+            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
           }
         })
         lisp.stop = async () => {
@@ -70,10 +80,9 @@ export default function Page() {
         // Don't run shared code automatically
         // const shouldRunAutomatically = !Boolean(codeFromHash)
 
-        const code =
-          Boolean(codeFromHash)
-            ? codeFromHash
-            : `(defun fib (n)
+        const code = Boolean(codeFromHash)
+          ? codeFromHash
+          : `(defun fib (n)
   (if (< n 3) 1
     (+ (fib (- n 1)) (fib (- n 2)))))
 
@@ -132,7 +141,9 @@ export default function Page() {
             className="mx-2 py-1 px-2
             bg-blue-100 shadow-sm active:shadow-none
             rounded cursor-pointer"
-            onClick={() => evalRef.current && evalRef.current()}
+            onClick={() => {
+              evalRef.current && evalRef.current()
+            }}
           >
             Run
           </button>
@@ -192,7 +203,7 @@ export default function Page() {
           </div>
 
           <pre className="font-mono py-2 px-4">
-            <code className='text-wrap'>{consoleOut}</code>
+            <code className="text-wrap">{consoleOut}</code>
           </pre>
         </section>
       </div>

@@ -325,6 +325,7 @@ object *findpair (object *var, object *env);
 char *lookupdoc (builtin_t name);
 char *cstring (object *form, char *buffer, int buflen);
 object *symbol (symbol_t name);
+object *bsymbol (builtin_t name);
 void printsymbol (object *form, pfun_t pfun);
 unsigned int tablesize (int n);
 bool findsubstring (char *part, builtin_t name);
@@ -7673,16 +7674,16 @@ object *eval (object *form, object *env) {
   bool stackpos;
   int TC=0;
   EVAL:
-
-  // Allow background tasks to run
-  yield_loop();
-
+  
   // Enough space?
   // Serial.println((uint32_t)StackBottom - (uint32_t)&stackpos); // Find best MAX_STACK value
   if ((uintptr_t)StackBottom - (uintptr_t)&stackpos > MAX_STACK) { Context = NIL; error2("stack overflow"); }
   if (Freespace <= WORKSPACESIZE>>4) gc(form, env);
   // Escape
   if (tstflag(ESCAPE)) { clrflag(ESCAPE); error2("escape!");}
+  
+    // // Allow background tasks to run
+    // yield_loop();
   if (!tstflag(NOESC)) testescape();
 
   if (form == NULL) return nil;
@@ -8553,8 +8554,8 @@ void setup () {
   initsleep();
   initgfx();
 
-  pfstring("uLisp ", pserial);
-  print_version();
+  // pfstring("uLisp ", pserial);
+  // print_version();
 
   millis(); // Start time
 }
@@ -8648,14 +8649,19 @@ void loop () {
 // ***************************************************************
 #if defined(__EMSCRIPTEN__)
 
-EM_ASYNC_JS(int, wait_for_tick_on_host, (), {
-  return await globalThis.ulisp.wait_for_tick();
+// Occasionally causes RuntimeError: unreachable executed
+// EM_ASYNC_JS(int, wait_for_tick_on_host, (), {
+//   return await globalThis.ulisp.wait_for_tick();
+// });
+
+EM_JS(int, wait_for_tick_on_host, (), {
+  return globalThis.ulisp.wait_for_tick();
 });
 
 #else
 // TODO:
 bool wait_for_tick_on_host () {
-  return true;
+  return false;
 }
 #endif
 

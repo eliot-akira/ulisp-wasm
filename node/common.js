@@ -14,11 +14,13 @@ export class PrintBuffer {
 }
 
 export async function lispCreator({
-  createLispWasmModule // Browser or Node
+  createLispWasmModule, // Browser or Node
+  print: userPrint
 }) {
   const printBuffer = new PrintBuffer()
 
   function print(...args) {
+    if (userPrint) return userPrint(...args)
     printBuffer.push(
       args.reduce((result, arg) => {
         result += arg // Assume string
