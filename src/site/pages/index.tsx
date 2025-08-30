@@ -153,8 +153,8 @@ export default function Page() {
             bg-red-100 shadow-sm active:shadow-none
             rounded cursor-pointer"
             onClick={() => {
-              setConsoleOut(' ')
-              setStep(0)
+              // setConsoleOut(' ')
+              // setStep(0)
               lisp && lisp.stop()
             }}
           >
