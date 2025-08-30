@@ -6,6 +6,22 @@ import { EditorView } from '@codemirror/view'
 
 let lisp
 
+const exampleCode = `(defun fib (n)
+  (if (< n 3) 1
+    (+ (fib (- n 1)) (fib (- n 2)))))
+
+(fib 5)`
+
+// Blink in infinite loop
+// `(defun b ()
+//   (pinmode 13 t)
+//   (loop
+//    (digitalwrite 13 t)
+//    (delay 1000)
+//    (digitalwrite 13 nil)
+//    (delay 1000)))
+// (b)`
+
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState(' ')
   const [currentStep, setStep] = useState(0)
@@ -66,37 +82,28 @@ export default function Page() {
         console.log('uLisp', lisp) // .version()
 
         const hash = window.location.hash.slice(1)
-        let codeFromHash = ''
+        let dataFromHash = {}
         if (hash) {
           // console.log('Decode from hash', hash)
 
           try {
-            codeFromHash = await base64Url.decode(hash)
+            dataFromHash = await base64Url.decode(hash)
+            if (typeof dataFromHash !== 'object') {
+              dataFromHash = {}
+            }
           } catch (e) {
             // ok
           }
         }
 
+        let { code } = dataFromHash
+
         // Don't run shared code automatically
-        // const shouldRunAutomatically = !Boolean(codeFromHash)
+        // const shouldRunAutomatically = !Boolean(dataFromHash.code)
 
-        const code = Boolean(codeFromHash)
-          ? codeFromHash
-          : `(defun fib (n)
-  (if (< n 3) 1
-    (+ (fib (- n 1)) (fib (- n 2)))))
-
-(fib 5)`
-
-        // Infinite loop
-        // `(defun b ()
-        //   (pinmode 13 t)
-        //   (loop
-        //    (digitalwrite 13 t)
-        //    (delay 1000)
-        //    (digitalwrite 13 nil)
-        //    (delay 1000)))
-        // (b)`
+        code = Boolean(code) // Not empty
+          ? code
+          : exampleCode
 
         editorViewRef.current = editor.init($editor, code, {
           eval: evaluate
@@ -169,7 +176,10 @@ export default function Page() {
               if (!editorViewRef.current) return
 
               const code = editorViewRef.current.state.doc.toString()
-              const hash = await base64Url.encode(code)
+              const hash = await base64Url.encode({
+                code
+                // TODO: title?
+              })
 
               // console.log('URL', hash)
 
