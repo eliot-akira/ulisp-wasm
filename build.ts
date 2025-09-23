@@ -67,6 +67,85 @@ switch (command) {
       console.log(e.stderr.toString())
     }
     break
+  /**
+   * Build CLI
+   */
+  case 'build:cli':
+    console.log('Using clang')
+    // -lm - Link libm, which contains all the floating point math routines, including fmod
+    // -lreadline - Replaced by linenoise because readline kept throwing segmentation fault
+    // -D_DEFAULT_SOURCE to define fchmod in #include <sys/stat.h>
+    // -D_XOPEN_SOURCE to define fileno in #include <stdio.h>
+    try {
+      await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli src/ulisp.c src/linenoise.c`
+    } catch (e) {
+      console.log(e.stderr.toString())
+    }
+
+    console.log('Using Zig cc')
+    for (const platform of [
+      // zig targets | grep x86_64-
+      'x86_64-linux',
+      'x86_64-macos',
+      // 'x86_64-windows',
+      // zig targets | grep aarch64-
+      'aarch64-linux',
+      'aarch64-macos'
+      // 'aarch64-windows'
+    ]) {
+      console.log('Platform:', platform)
+      const [arch, os] = platform.split('-')
+      try {
+        // Standardize suffix with result of "bun build" below
+        let destFile = `build/ulisp-cli-${os}-${arch === 'aarch64' ? 'arm64' : arch === 'x86_64' ? 'x64' : 'unknown'}`
+        console.log('Target file:', destFile)
+        let result = await $`zig cc -target ${platform} -std=c99 -lm -O3 ${
+          ['x86_64-linux', 'aarch64-linux', 'x86_64-macos', 'aarch64-macos'].includes(platform)
+            ? '-D__HAS_RANDOM__'
+            : ''
+        } ${
+          ['x86_64-linux', 'aarch64-linux'].includes(platform) ? '-D_XOPEN_SOURCE' : ''
+        } -o ${destFile} src/ulisp.c src/linenoise.c`
+        console.log(result.stdout.toString())
+      } catch (e) {
+        console.log(e.stderr ? e.stderr.toString() : e)
+      }
+    }
+    break
+  /**
+   * Build server with Bun
+   */
+  case 'build:bun':
+    try {
+      for (const platform of [
+        'linux-x64',
+        'linux-arm64',
+        'windows-x64',
+        // 'windows-arm64', // Unsupported by Bun
+        'darwin-x64',
+        'darwin-arm64'
+      ]) {
+        const [os, arch] = platform.split('-')
+        const srcFile = `node/cli.js`
+        const destFile = `build/ulisp-bun-${os === 'darwin' ? 'macos' : os}-${arch}`
+        console.log('Target file:', destFile)
+        await $`bun build --compile --minify --sourcemap --target bun-${platform} --outfile ${destFile} ${srcFile}`
+      }
+    } catch (e) {
+      console.log(e.stderr.toString())
+    }
+    break
+
+  /**
+   * Build Zig source
+   */
+  case 'build:zig':
+    try {
+      await $`zig translate-c -D__HAS_RANDOM__=1 -lc src/ulisp.c > src/ulisp.zig`
+    } catch (e) {
+      console.log(e.stderr.toString())
+    }
+    break
   default:
     break
 }
