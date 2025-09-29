@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/technoblogy/ulisp-riscv
+	branch = master
+	commit = 1ba1ea4a635355dc2064d12e696a9d79c8b4637b
+	parent = 8b7e933caa9382132b85f9e1c99875de19dc12e3
+	method = merge
+	cmdver = 0.4.6
