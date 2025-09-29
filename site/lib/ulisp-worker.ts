@@ -1,4 +1,4 @@
-import { createLisp } from '../../web.ts'
+import { createLisp } from '../../src/web.ts'
 
 let lisp
 

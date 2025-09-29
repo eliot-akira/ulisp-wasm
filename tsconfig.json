@@ -3,7 +3,7 @@
     "baseUrl": ".",
     "paths": {
       "/*": ["public/*"],
-      "@/*": ["src/site/*"]
+      "@/*": ["site/*"]
     },
     "target": "ES2020",
     "useDefineForClassFields": true,
@@ -25,5 +25,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "site"
+  ]
 }

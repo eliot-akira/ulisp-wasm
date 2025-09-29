@@ -8,7 +8,7 @@
     "dev": "concurrently --names web,wasm 'vite' 'bun run dev:web'",
     "build:site": "run-s clean:site build:site:* generate:site",
     "build:site:client": "vite build",
-    "build:site:server": "vite build --ssr src/site/server.tsx",
+    "build:site:server": "vite build --ssr site/server.tsx",
     "generate:site": "node build/server/server.js",
     "clean:site": "rm -rf build",
     "build": "bun build:site",
@@ -25,7 +25,7 @@
     "test:dev": "chokidar \"tests/**/*.ts\" --initial --silent --command 'bun tests/index.ts'",
     "tdd": "concurrently --names wasm,test 'bun run dev:node' 'bun run test:dev'",
     "update": "git-subrepo pull builder",
-    "format": "prettier -w src"
+    "format": "prettier -w site"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
