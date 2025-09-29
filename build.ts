@@ -141,7 +141,7 @@ switch (command) {
    */
   case 'build:zig':
     try {
-      await $`zig translate-c -D__HAS_RANDOM__=1 -lc src/ulisp.c > src/ulisp.zig`
+      await $`zig translate-c -D__HAS_RANDOM__=1 -lc src/ulisp.c > zig/ulisp.zig`
     } catch (e) {
       console.log(e.stderr.toString())
     }
