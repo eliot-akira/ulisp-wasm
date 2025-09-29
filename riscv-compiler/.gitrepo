@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/technoblogy/lisp-riscv-compiler
+	branch = main
+	commit = 8d212222f477f36a31fc97a6b4037a9c69bbf527
+	parent = f0c26760dac2d2ea5e5f15fa257aae4e33addc89
+	method = merge
+	cmdver = 0.4.6
