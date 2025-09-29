@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/technoblogy/lisp-arm-compiler
+	branch = main
+	commit = 1e48e2168971526d8928c9cc60eb3fea8261a320
+	parent = 5425c9aaa295122f8968d374b56a877357cf8e3d
+	method = merge
+	cmdver = 0.4.6
