@@ -619,13 +619,13 @@ test('Equal', async () => {
 })
 
 test('Keywords', async () => {
-  is(t, await run(`(keywordp :led-builtin)`), 'keywordp')
+  is(t, await run(`(keywordp :led-builtin)`) !== nil, 'keywordp')
   is(nil, await run(`(keywordp print)`), 'keywordp')
   is(nil, await run(`(keywordp nil)`), 'keywordp')
   is(nil, await run(`(keywordp 12)`), 'keywordp')
-  is(t, await run(`(keywordp :fred)`), 'keywordp')
-  is(t, await run(`(keywordp :initial-element)`), 'keywordp')
-  is(t, await run(`(keywordp :element-type)`), 'keywordp')
+  is(t, await run(`(keywordp :fred)`) !== nil, 'keywordp')
+  is(t, await run(`(keywordp :initial-element)`) !== nil, 'keywordp')
+  is(t, await run(`(keywordp :element-type)`) !== nil, 'keywordp')
 })
 
 test('Errors', async () => {
