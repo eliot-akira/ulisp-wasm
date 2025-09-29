@@ -1661,13 +1661,13 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  55292: () => { return performance.now(); },  
- 55322: ($0) => { return performance.now() - $0; },  
- 55357: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 55413: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55466: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 55522: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55575: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
+  55356: () => { return performance.now(); },  
+ 55386: ($0) => { return performance.now() - $0; },  
+ 55421: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 55477: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55530: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 55586: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55639: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await globalThis.ulisp.delay( millisecs ); }); }
 function wait_for_tick_on_host() { return globalThis.ulisp.wait_for_tick(); }
