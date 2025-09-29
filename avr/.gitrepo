@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/technoblogy/ulisp
+	branch = master
+	commit = 8a2a00b87d0b93631f88f02e8b520c600f3a88be
+	parent = 8c46df405e3746f46283c316caff79a73f1d03c4
+	method = merge
+	cmdver = 0.4.6
