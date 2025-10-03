@@ -92,6 +92,7 @@ export async function createLisp(options = {}) {
     timeout = 0, // Allow infinite loop - TODO: Optional
     step, // Optional callback for each step
     print, // Optional callback for print
+    getInput, // Optional callback for input
   } = options
 
   function handleStep(e) {
@@ -99,7 +100,18 @@ export async function createLisp(options = {}) {
       step(e.data.step)
     } else if (e.data.print != null && print) {
       print(e.data.print)
-    } 
+    } else if (e.data.inputRequest && getInput) {
+      // Handle input request from worker
+      const { inputId } = e.data
+      getInput().then(input => {
+        // Send input back to worker
+        e.target.postMessage({
+          action: 'input-response',
+          id: inputId,
+          input: input
+        })
+      })
+    }
   }
 
   async function restart() {

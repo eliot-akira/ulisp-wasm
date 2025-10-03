@@ -1661,21 +1661,24 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  55356: () => { return performance.now(); },  
- 55386: ($0) => { return performance.now() - $0; },  
- 55421: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 55477: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55530: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 55586: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55639: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
+  55456: () => { return performance.now(); },  
+ 55486: ($0) => { return performance.now() - $0; },  
+ 55521: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 55577: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55630: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 55686: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55739: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await globalThis.ulisp.delay( millisecs ); }); }
+function __asyncjs__get_input_from_host() { return Asyncify.handleAsync(async () => { const input = await globalThis.ulisp.getInput(); const len = lengthBytesUTF8(input) + 1; const ptr = _malloc(len); stringToUTF8(input, ptr, len); return ptr; }); }
 function wait_for_tick_on_host() { return globalThis.ulisp.wait_for_tick(); }
 var wasmImports = {
   /** @export */
   __assert_fail: ___assert_fail,
   /** @export */
   __asyncjs__delay_on_host,
+  /** @export */
+  __asyncjs__get_input_from_host,
   /** @export */
   _abort_js: __abort_js,
   /** @export */
@@ -1705,6 +1708,7 @@ var wasmImports = {
 };
 var wasmExports = await createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
+var _free = Module['_free'] = createExportWrapper('free', 1);
 var _print_version = Module['_print_version'] = createExportWrapper('print_version', 0);
 var _setup = Module['_setup'] = createExportWrapper('setup', 0);
 var _stop_loop = Module['_stop_loop'] = createExportWrapper('stop_loop', 0);
@@ -1712,7 +1716,6 @@ var _evaluate = Module['_evaluate'] = createExportWrapper('evaluate', 1);
 var _fflush = createExportWrapper('fflush', 1);
 var _strerror = createExportWrapper('strerror', 1);
 var _malloc = createExportWrapper('malloc', 1);
-var _free = Module['_free'] = createExportWrapper('free', 1);
 var _setThrew = createExportWrapper('setThrew', 2);
 var _emscripten_stack_init = wasmExports['emscripten_stack_init']
 var _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free']

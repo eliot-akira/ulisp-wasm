@@ -6,7 +6,8 @@ export async function createLisp(moduleArgs = {}) {
   const {
     wasmPath = '',
     tick,
-    print
+    print,
+    getInput
   } = moduleArgs
 
   /**
@@ -36,6 +37,13 @@ export async function createLisp(moduleArgs = {}) {
         console.log('delay', duration)
         setTimeout(resolve, parseInt(duration, 10))
       })
+    },
+    async getInput() {
+      if (getInput) {
+        return await getInput()
+      }
+      // Fallback: return empty string if no input handler
+      return ''
     },
     escape() {
       return 0 // Return 1 to stop the runtime

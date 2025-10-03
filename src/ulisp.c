@@ -307,6 +307,7 @@ int listlength (object *list);
 void checkminmax (builtin_t name, int nargs);
 void pint (int i, pfun_t pfun);
 int gserial ();
+int gserial_interactive ();
 void pintbase (uint32_t i, uint8_t power2, pfun_t pfun);
 int subwidthlist (object *form, int w);
 void prin1object (object *form, pfun_t pfun);
@@ -443,6 +444,15 @@ EM_ASYNC_JS(void, delay_on_host, (int millisecs), {
 void delay (int millisecs) {
   delay_on_host(millisecs);
 }
+
+// Get input from the host (browser console)
+EM_ASYNC_JS(char*, get_input_from_host, (), {
+  const input = await globalThis.ulisp.getInput();
+  const len = lengthBytesUTF8(input) + 1;
+  const ptr = _malloc(len);
+  stringToUTF8(input, ptr, len);
+  return ptr;
+});
 #else
 void delay (int millisecs) {
   // TODO:
@@ -5237,15 +5247,17 @@ object *fn_break (object *args, object *env) {
   If stream is specified the item is read from the specified stream.
 */
 object *fn_read (object *args, object *env) {
+  (void) env;
 #ifdef __EMSCRIPTEN__
-  TODO1(fn_read, nil);
+  // For now, only support reading from the default serial stream
+  if (args != NULL) {
+    error2(PSTR("read with custom streams not yet supported"));
+  }
+  return readmain(gserial_interactive);
 #else
-  // TODO:
-  // (void) env;
-  // gfun_t gfun = gstreamfun(args);
-  // return readmain(gfun);
+  gfun_t gfun = gstreamfun(args);
+  return readmain(gfun);
 #endif
-  return nil;
 }
 
 /*
@@ -5306,16 +5318,19 @@ object *fn_terpri (object *args, object *env) {
   Reads a byte from a stream and returns it.
 */
 object *fn_readbyte (object *args, object *env) {
+  (void) env;
 #if defined(__EMSCRIPTEN__)
-  TODO1(fn_readbyte, nil);
+  // For now, only support reading from the default serial stream
+  if (args != NULL) {
+    error2(PSTR("read-byte with custom streams not yet supported"));
+  }
+  int c = gserial_interactive();
+  return (c == -1) ? nil : number(c);
 #else
-  // TODO:
-  // (void) env;
-  // gfun_t gfun = gstreamfun(args);
-  // int c = gfun();
-  // return (c == -1) ? nil : number(c);
+  gfun_t gfun = gstreamfun(args);
+  int c = gfun();
+  return (c == -1) ? nil : number(c);
 #endif
-  return nil;
 }
 
 /*
@@ -5324,15 +5339,17 @@ object *fn_readbyte (object *args, object *env) {
   If stream is specified the line is read from the specified stream.
 */
 object *fn_readline (object *args, object *env) {
+  (void) env;
 #if defined(__EMSCRIPTEN__)
-  TODO1(fn_readline, nil);
+  // For now, only support reading from the default serial stream
+  if (args != NULL) {
+    error2(PSTR("read-line with custom streams not yet supported"));
+  }
+  return readstring('\n', false, gserial_interactive);
 #else
-  // TODO:
-  // (void) env;
-  // gfun_t gfun = gstreamfun(args);
-  // return readstring('\n', false, gfun);
+  gfun_t gfun = gstreamfun(args);
+  return readstring('\n', false, gfun);
 #endif
-  return nil;
 }
 
 /*
@@ -8289,6 +8306,11 @@ int input_pos = 0;
 int input_len = 0;
 bool loop_done = false;
 
+// Interactive input buffer for read/read-line
+char *interactive_input_buf = NULL;
+int interactive_input_pos = 0;
+int interactive_input_len = 0;
+
 /*
   gserial - gets a character from the serial port
 */
@@ -8331,6 +8353,40 @@ int gserial () {
 //   return temp;
 // #endif
 }
+
+#if defined(__EMSCRIPTEN__)
+/*
+  gserial_interactive - gets a character from interactive input, requesting from host when needed
+*/
+int gserial_interactive () {
+  if (LastChar) {
+    char temp = LastChar;
+    LastChar = 0;
+    return temp;
+  }
+
+  // Check if we need to request more input
+  if (interactive_input_pos >= interactive_input_len) {
+    // Free the previous input buffer if it exists
+    if (interactive_input_buf != NULL) {
+      free(interactive_input_buf);
+      interactive_input_buf = NULL;
+    }
+
+    // Request input from the host
+    interactive_input_buf = get_input_from_host();
+    interactive_input_pos = 0;
+    interactive_input_len = strlen(interactive_input_buf);
+
+    // If input is empty, treat as EOF
+    if (interactive_input_len == 0) {
+      return -1;
+    }
+  }
+
+  return interactive_input_buf[interactive_input_pos++];
+}
+#endif
 
 /*
   nextitem - reads the next token from the specified stream

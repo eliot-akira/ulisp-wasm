@@ -1,10 +1,21 @@
 import { createLisp } from '../../src/web.ts'
 
 let lisp
+const inputResolvers = new Map()
 
 async function handleMessage(e) {
 
-  const { id, data, action, print } = e.data
+  const { id, data, action, input } = e.data
+
+  // Handle input response from main thread
+  if (action === 'input-response') {
+    const resolver = inputResolvers.get(id)
+    if (resolver) {
+      resolver(input)
+      inputResolvers.delete(id)
+    }
+    return
+  }
 
   if (action) {
     console.log('Action', action)
@@ -12,7 +23,7 @@ async function handleMessage(e) {
   }
 
   const { code, wasmPath = '' } = data
-  
+
   let step = 0
 
   if (!lisp) {
@@ -24,6 +35,16 @@ async function handleMessage(e) {
       },
       print(arg: any) {
         self.postMessage({ print: arg })
+      },
+      async getInput() {
+        // Request input from main thread
+        const inputId = `input-${Date.now()}-${Math.random()}`
+        self.postMessage({ inputRequest: true, inputId })
+
+        // Wait for response
+        return new Promise((resolve) => {
+          inputResolvers.set(inputId, resolve)
+        })
       }
     })
   }
