@@ -1661,16 +1661,18 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  55456: () => { return performance.now(); },  
- 55486: ($0) => { return performance.now() - $0; },  
- 55521: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 55577: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55630: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 55686: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55739: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
+  54768: () => { return performance.now(); },  
+ 54798: ($0) => { return performance.now() - $0; },  
+ 54833: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 54889: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 54942: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 54998: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55051: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await globalThis.ulisp.delay( millisecs ); }); }
-function __asyncjs__get_input_from_host() { return Asyncify.handleAsync(async () => { const input = await globalThis.ulisp.getInput(); const len = lengthBytesUTF8(input) + 1; const ptr = _malloc(len); stringToUTF8(input, ptr, len); return ptr; }); }
+function __asyncjs__read_line_from_host() { return Asyncify.handleAsync(async () => { const input = await globalThis.ulisp.readLine(); const len = lengthBytesUTF8(input) + 1; const ptr = _malloc(len); stringToUTF8(input, ptr, len); return ptr; }); }
+function __asyncjs__read_byte_from_host(streamtype) { return Asyncify.handleAsync(async () => { const byte = await globalThis.ulisp.readByte(streamtype); if (byte === -1) { return -1; } if (byte < 0 || byte > 255) { console.error("Invalid byte generated", byte); return -1; } return byte; }); }
+function write_byte_to_host(streamtype,c) { globalThis.ulisp.writeByte(streamtype, c); }
 function wait_for_tick_on_host() { return globalThis.ulisp.wait_for_tick(); }
 var wasmImports = {
   /** @export */
@@ -1678,7 +1680,9 @@ var wasmImports = {
   /** @export */
   __asyncjs__delay_on_host,
   /** @export */
-  __asyncjs__get_input_from_host,
+  __asyncjs__read_byte_from_host,
+  /** @export */
+  __asyncjs__read_line_from_host,
   /** @export */
   _abort_js: __abort_js,
   /** @export */
@@ -1704,7 +1708,9 @@ var wasmImports = {
   /** @export */
   invoke_vii,
   /** @export */
-  wait_for_tick_on_host
+  wait_for_tick_on_host,
+  /** @export */
+  write_byte_to_host
 };
 var wasmExports = await createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
