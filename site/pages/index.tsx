@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import * as editor from '@/editor'
+import * as editor from '../../editor'
 import * as base64Url from 'base64-compressor'
 import { createLisp } from '../lib/create-lisp'
 import { EditorView } from '@codemirror/view'

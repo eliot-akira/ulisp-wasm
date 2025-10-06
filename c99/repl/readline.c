@@ -1,3 +1,5 @@
+// Readline replacement based of linenoise
+
 /* linenoise.c -- guerrilla line editing library against the idea that a
  * line editing lib needs to be 20,000 lines of C code.
  *

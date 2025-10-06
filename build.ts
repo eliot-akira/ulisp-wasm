@@ -11,7 +11,7 @@ switch (command) {
    */
   case 'build:web':
     await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc \
-    src/ulisp.c -I src -o public/ulisp.js \
+    c99/ulisp.c -I c99 -o public/ulisp.js \
     -sASSERTIONS \
     -O2 -fms-extensions -sENVIRONMENT=web -sEXPORT_NAME=createLispWasmModule \
     -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
@@ -19,9 +19,9 @@ switch (command) {
     -s "EXPORTED_RUNTIME_METHODS=[ 'ccall', 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
 
     {
-      const file = 'src/ulisp.js'
+      const file = 'web/ulisp.js'
       await fs.rename('public/ulisp.js', file)
-      await fs.writeFile(file, replaceCommon(await fs.readFile(file, 'utf8')))
+      await fs.writeFile(file, patchEmscriptenOutput(await fs.readFile(file, 'utf8')))
       console.log('Wrote', file)
     }
 
@@ -31,26 +31,15 @@ switch (command) {
    */
   case 'build:node':
     await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc \
-    src/ulisp.c -I src -o node/ulisp.js \
+    c99/ulisp.c -I c99 -o node/ulisp.js \
     -sASSERTIONS \
     -O2 -fms-extensions -sENVIRONMENT=node -sEXPORT_NAME=createLispWasmModule \
     -sASYNCIFY -sMODULARIZE -g -sWASM=1 \
     -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free', '_print_version', '_stop_loop' ]" \
     -s "EXPORTED_RUNTIME_METHODS=[ 'ccall', 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
-    /**
-     * HACK: Patch output of Emscripten in node/ulisp.js
-     *
-     * - Replace require() with await import
-     * - Replace module.exports with export default
-     */
     {
       const file = 'node/ulisp.js'
-      await fs.writeFile(
-        file,
-        replaceCommon(await fs.readFile(file, 'utf8'))
-          .replace(`fs = require('fs')`, `fs = await import('fs')`)
-          .replace(`require('path')`, `{}`)
-      )
+      await fs.writeFile(file, patchEmscriptenOutput(await fs.readFile(file, 'utf8')))
       console.log('Wrote', file)
     }
     break
@@ -60,7 +49,7 @@ switch (command) {
   case 'build:wasi':
     try {
       await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc wasi/ulisp-wasi.c \
-      -I src -o wasi/ulisp.wasm -O2 -fms-extensions -sENVIRONMENT=node \
+      -I c99 -o wasi/ulisp.wasm -O2 -fms-extensions -sENVIRONMENT=node \
       -s STANDALONE_WASM -s EXPORT_ALL \
       -sMODULARIZE -g -sWASM=1`
     } catch (e) {
@@ -77,7 +66,7 @@ switch (command) {
     // -D_DEFAULT_SOURCE to define fchmod in #include <sys/stat.h>
     // -D_XOPEN_SOURCE to define fileno in #include <stdio.h>
     try {
-      await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli src/ulisp.c src/linenoise.c`
+      await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli c99/ulisp.c c99/repl/readline.c`
     } catch (e) {
       console.log(e.stderr.toString())
     }
@@ -105,7 +94,7 @@ switch (command) {
             : ''
         } ${
           ['x86_64-linux', 'aarch64-linux'].includes(platform) ? '-D_XOPEN_SOURCE' : ''
-        } -o ${destFile} src/ulisp.c src/linenoise.c`
+        } -o ${destFile} c99/ulisp.c c99/repl/readline.c`
         console.log(result.stdout.toString())
       } catch (e) {
         console.log(e.stderr ? e.stderr.toString() : e)
@@ -141,7 +130,7 @@ switch (command) {
    */
   case 'build:zig':
     try {
-      await $`zig translate-c -D__HAS_RANDOM__=1 -lc src/ulisp.c > zig/ulisp.zig`
+      await $`zig translate-c -D__HAS_RANDOM__=1 -lc c99/ulisp.c > zig/ulisp.zig`
     } catch (e) {
       console.log(e.stderr.toString())
     }
@@ -150,8 +139,16 @@ switch (command) {
     break
 }
 
-function replaceCommon(str) {
-  return str
+/**
+ * Patch Emscripten output
+ * - For task build:web, public/ulisp.js
+ * - For task build:node, node/ulisp.js
+ */
+function patchEmscriptenOutput(str) {
+  const replaceExport = `export default createLispWasmModule`
+
+  let replacedStr = str
+    // Replace module.exports with export default
     .replace(
       `if (typeof exports === 'object' && typeof module === 'object') {
   module.exports = createLispWasmModule;
@@ -160,11 +157,28 @@ function replaceCommon(str) {
   module.exports.default = createLispWasmModule;
 } else if (typeof define === 'function' && define['amd'])
   define([], () => createLispWasmModule);`,
-      `export default createLispWasmModule`
+      replaceExport
     )
     .replace(
       // Silence unhandled promise when loop aborted
       `startAsync().then(wakeUp);`,
       `startAsync().then(wakeUp).catch(() => {});`
     )
+    // Replace require() with await import
+    .replace(`fs = require('fs')`, `fs = await import('fs')`)
+    // Replace unused path module
+    .replace(`require('path')`, `{}`)
+
+  // Warn when an upstream change breaks it
+
+  if (replacedStr.indexOf(replaceExport) === -1) {
+    console.warn(`
+
+Warning: Looks like upstream changed its export method.
+See build.ts, public/ulisp.js or node/ulisp.js
+
+`)
+  }
+
+  return replacedStr
 }

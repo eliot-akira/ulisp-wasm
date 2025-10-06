@@ -3,9 +3,10 @@ services:
   builder:
     image: emscripten/emsdk:4.0.5
     volumes:
+      - ./c99:/app/c99
       - ./docs:/app/docs
       - ./node:/app/node
-      - ./src:/app/src
       - ./public:/app/public
       - ./wasi:/app/wasi
+      - ./web:/app/web
     working_dir: /app

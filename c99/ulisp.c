@@ -52,7 +52,7 @@ const char LispLibrary[] =
 
 // Can be both Emscripten and standalone
 #if defined(__STANDALONE__)
-#include "linenoise.h"
+#include "repl/readline.h"
 #endif
 
 #if defined(gfxsupport)
