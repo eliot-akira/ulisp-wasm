@@ -70,9 +70,7 @@ function createWorkerRequest(worker) {
   function cancelAll() {
     for (const [id, request] of requestMap) {
       clearTimeout(request.timeoutId)
-      request.reject(
-        new Error('All requests cancelled')
-      )
+      request.reject(new Error('All requests cancelled'))
     }
     requestMap.clear()
   }
@@ -86,31 +84,111 @@ function createWorkerRequest(worker) {
   }
 }
 
-export async function createLisp(options = {}) {
+export type CreateLispOptions = {
+  /**
+   * Folder path for Wasm
+   */
+  wasmPath?: string
+  /**
+   * Timeout or `0` to allow infinite loop
+   */
+  timeout?: number
+  /**
+   * Optional callback for each step
+   */
+  step?: Function
+  /**
+   * Read a byte from stream
+   * Returns -1 for no input
+   */
+  readByte?: (streamType: number) => Promise<number>
+  /**
+   * Write a byte from stream
+   */
+  writeByte?: (streamType: number, value: number) => Promise<void>
+  /**
+   * Read a line from console input
+   */
+  readLine?: () => Promise<string>
+  /**
+   * Write a line to console out
+   */
+  print?: (value: string) => void
+  /**
+   * Write a line to console error
+   */
+  printError?: (value: string) => void
+}
+
+export async function createLisp(options: CreateLispOptions = {}) {
   const {
-    wasmPath = window.location.origin + window.location.pathname, // Find Wasm file at current page URL
-    timeout = 0, // Allow infinite loop - TODO: Optional
-    step, // Optional callback for each step
-    print, // Optional callback for print
-    getInput, // Optional callback for input
+    wasmPath = window.location.origin + window.location.pathname,
+    timeout = 0,
+    step,
+    readByte,
+    writeByte,
+    readLine,
+    print,
+    printError
   } = options
 
   function handleStep(e) {
     if (e.data.step != null && step) {
       step(e.data.step)
-    } else if (e.data.print != null && print) {
-      print(e.data.print)
-    } else if (e.data.inputRequest && getInput) {
-      // Handle input request from worker
-      const { inputId } = e.data
-      getInput().then(input => {
-        // Send input back to worker
-        e.target.postMessage({
-          action: 'input-response',
-          id: inputId,
-          input: input
-        })
-      })
+    } else if (e.data.print != null) {
+      if (print) {
+        print(e.data.print)
+      }
+    } else if (e.data.printError != null) {
+      if (printError) {
+        printError(e.data.printError)
+      } else if (print) {
+        print(e.data.printError)
+      }
+    } else if (e.data.action) {
+      const { requestId: id, action, args = [] } = e.data
+      switch (action) {
+        // General-purpose stream I/O: readByte, writeByte
+        case 'readByte':
+          if (!readByte) return
+          readByte(...args).then((response) => {
+            // Send response back to worker
+            e.target.postMessage({
+              action: 'response',
+              id,
+              response
+            })
+          })
+          break
+        case 'writeByte':
+          if (!writeByte) return
+          writeByte(...args)
+          break
+        // Console I/O: readLine, writeLine, writeLineError
+        case 'readLine':
+          if (!readLine) return
+          readLine(...args).then((response) => {
+            // Send response back to worker
+            e.target.postMessage({
+              action: 'response',
+              id,
+              response
+            })
+          })
+          break
+        // For completeness of interface
+        case 'writeLine':
+          if (!print) return
+          print(...args)
+          break
+        case 'writeLineError':
+          if (!print) return
+          printError(...args)
+          break
+        default:
+          // Unknown action
+          break
+      }
     }
   }
 

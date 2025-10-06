@@ -74,12 +74,31 @@ export default function Page() {
             const prev = consoleOutRef.current.trim()
             setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
           },
-          getInput() {
+          printError(arg) {
+            // TODO: Style error differently
+            const prev = consoleOutRef.current.trim()
+            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+          },
+          readLine() {
             return new Promise((resolve) => {
               setInputPrompt(true)
               setInputValue('')
               inputResolverRef.current = resolve
             })
+          },
+          async readByte(streamType: number): Promise<number> {
+            // TODO: Buffer input in console, and release each byte when called
+
+            return -1 // No ipnut
+          },
+          async writeByte(streamType: number, byte: number): Promise<void> {
+            console.log('writeByte', streamType, byte)
+            if (byte < 0 || byte > 255) {
+              console.warn('Invalid byte range')
+              return
+            }
+            const prev = consoleOutRef.current.trim()
+            setConsoleOut(prev + String.fromCharCode(byte))
           }
         })
         lisp.stop = async () => {

@@ -1,13 +1,19 @@
 import createLispWasmModule from './ulisp.js'
 import { lispCreator } from '../node/common.js'
+import type { CreateLispOptions } from '../site/lib/create-lisp.ts'
 
-export async function createLisp(moduleArgs = {}) {
 
+export async function createLisp(moduleArgs: CreateLispOptions = {}) {
   const {
     wasmPath = '',
-    tick,
+    tick, // step?
     print,
-    getInput
+    printError,
+
+    // Stream
+    readByte,
+    writeByte,
+    readLine
   } = moduleArgs
 
   /**
@@ -38,12 +44,30 @@ export async function createLisp(moduleArgs = {}) {
         setTimeout(resolve, parseInt(duration, 10))
       })
     },
-    async getInput() {
-      if (getInput) {
-        return await getInput()
+    // Stream I/O
+    async readByte(streamType: number) {
+      return readByte ? await readByte(streamType) : ''
+    },
+    writeByte(streamType: number, data: string) {
+      if (writeByte) {
+        writeByte(streamType, data)
       }
-      // Fallback: return empty string if no input handler
-      return ''
+    },
+    // Console I/O
+    async readLine() {
+      return readLine ? await readLine() : ''
+    },
+    writeLine(data: string) {
+      if (print) {
+        print(data)
+      }
+    },
+    writeLineError(data: string) {
+      if (printError) {
+        printError(data)
+      } else if (print) {
+        print(data)
+      }
     },
     escape() {
       return 0 // Return 1 to stop the runtime
@@ -51,7 +75,7 @@ export async function createLisp(moduleArgs = {}) {
     wait_for_tick() {
       if (tick) return tick()
     },
-    stop() {},
+    stop() {}
     // print(arg) {
     //   if (print) print(arg)
     // },
@@ -59,14 +83,20 @@ export async function createLisp(moduleArgs = {}) {
 
   return await lispCreator({
     print,
+    printError: printError || print,
+
+    readByte,
+    writeByte,
+    readLine,
+
     createLispWasmModule(args = {}) {
       return createLispWasmModule({
         ...args,
-      locateFile(path, scriptPath) {
-        // scriptPath points to source during development
-        // console.log('path', wasmPath + path)
-        return wasmPath + path
-      },
+        locateFile(path, scriptPath) {
+          // scriptPath points to source during development
+          // console.log('path', wasmPath + path)
+          return wasmPath + path
+        }
       })
     }
   })

@@ -1,18 +1,17 @@
 import { createLisp } from '../../src/web.ts'
 
 let lisp
-const inputResolvers = new Map()
+const requestResolvers = new Map()
 
 async function handleMessage(e) {
+  const { id, data, action, response } = e.data
 
-  const { id, data, action, input } = e.data
-
-  // Handle input response from main thread
-  if (action === 'input-response') {
-    const resolver = inputResolvers.get(id)
+  // Handle response from main thread
+  if (action === 'response') {
+    const resolver = requestResolvers.get(id)
     if (resolver) {
-      resolver(input)
-      inputResolvers.delete(id)
+      resolver(response)
+      requestResolvers.delete(id)
     }
     return
   }
@@ -26,6 +25,26 @@ async function handleMessage(e) {
 
   let step = 0
 
+  /**
+   * Send request and wait for response
+   */
+  function sendRequest<T>(action: string, ...args: any): Promise<T> {
+
+    const requestId = `request-${Date.now()}-${Math.random()}`
+    self.postMessage({ requestId, action, args })
+
+    return new Promise((resolve) => {
+      requestResolvers.set(requestId, resolve)
+    })
+  }
+
+  /**
+   * Send action with no response expected
+   */
+  function sendAction(action: string, ...args: any) {
+    self.postMessage({ action, args })
+  }
+
   if (!lisp) {
     lisp = await createLisp({
       wasmPath,
@@ -36,16 +55,26 @@ async function handleMessage(e) {
       print(arg: any) {
         self.postMessage({ print: arg })
       },
-      async getInput() {
-        // Request input from main thread
-        const inputId = `input-${Date.now()}-${Math.random()}`
-        self.postMessage({ inputRequest: true, inputId })
+      printError(arg: any) {
+        self.postMessage({ printError: arg })
+      },
 
-        // Wait for response
-        return new Promise((resolve) => {
-          inputResolvers.set(inputId, resolve)
-        })
-      }
+      readByte(streamType: number) {
+        return sendRequest<number>('readByte', streamType)
+      },
+      readLine() {
+        return sendRequest<string>('readLine')
+      },
+      async writeByte(streamType: number, data: string | number) {
+        return sendAction('writeByte', streamType, data)
+      },
+      async writeLine(data: string) {
+        return sendAction('writeLine', data)
+      },
+      async writeLineError(data: string) {
+        return sendAction('writeLineError', data)
+      },
+
     })
   }
 
@@ -58,6 +87,6 @@ async function handleMessage(e) {
   self.postMessage({ id, result })
 }
 
-self.addEventListener('message', function(e) {
+self.addEventListener('message', function (e) {
   handleMessage(e)
 })
