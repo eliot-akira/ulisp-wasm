@@ -15,7 +15,8 @@ export class PrintBuffer {
 
 export async function lispCreator({
   createLispWasmModule, // Browser or Node
-  print: userPrint
+  print: userPrint,
+  printError
 }) {
   const printBuffer = new PrintBuffer()
 
@@ -31,7 +32,7 @@ export async function lispCreator({
 
   const Module = await createLispWasmModule({
     print,
-    printErr: print
+    printErr: printError || print
   })
 
   Module._setup()

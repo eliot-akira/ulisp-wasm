@@ -184,6 +184,20 @@ From `ulisp-builder/build.lisp`
 - [Graphics display interface in Lisp](http://www.ulisp.com/show?23QU)
 - [Plotting to a colour TFT display](http://www.ulisp.com/show?2NSB)
 
+## Streams
+
+See [the article on Streams](http://www.ulisp.com/show?5837) on the uLisp site.
+
+| Stream | Streamtype | Description |
+|---|---|---|
+| SERIALSTREAM | 0 | Reading from and writing to a Serial interface |
+| I2CSTREAM | 1 | Reading from and writing to an I2C device |
+| SPISTREAM | 2 | Reading from and writing to an SPI device |
+| SDSTREAM | 3 | Reading from and writing to SD cards |
+| WIFISTREAM | 4 | Reading from and writing to Wi-Fi protocols |
+| STRINGSTREAM | 5 | Reading from or writing to a Lisp string |
+| GFXSTREAM | 6 | Writing text to a TFT colour display |
+
 ## Graphics
 
 uLisp has graphics methods that use the [Adafruit GFX Library](https://learn.adafruit.com/adafruit-gfx-graphics-library) with [TFT LCD](https://en.wikipedia.org/wiki/TFT_LCD) displays.

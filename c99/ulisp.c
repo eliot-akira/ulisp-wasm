@@ -307,6 +307,7 @@ int listlength (object *list);
 void checkminmax (builtin_t name, int nargs);
 void pint (int i, pfun_t pfun);
 int gserial ();
+int gserial_interactive ();
 void pintbase (uint32_t i, uint8_t power2, pfun_t pfun);
 int subwidthlist (object *form, int w);
 void prin1object (object *form, pfun_t pfun);
@@ -443,6 +444,43 @@ EM_ASYNC_JS(void, delay_on_host, (int millisecs), {
 void delay (int millisecs) {
   delay_on_host(millisecs);
 }
+
+/**
+ * Read line from host console. Caller must free(result) when done.
+ */
+EM_ASYNC_JS(char*, read_line_from_host, (), {
+  const input = await globalThis.ulisp.readLine();
+  const len = lengthBytesUTF8(input) + 1;
+  const ptr = _malloc(len);
+  stringToUTF8(input, ptr, len);
+  return ptr;
+});
+
+/**
+ * Read byte from host stream
+ * Return a byte (uint8_t) or -1 for no input
+ */
+EM_ASYNC_JS(int, read_byte_from_host, (int streamtype), {
+  const byte = await globalThis.ulisp.readByte(streamtype);
+
+  if (byte === -1) {
+    return -1;
+  }
+
+  // Validate byte range
+  if (byte < 0 || byte > 255) {
+    console.error("Invalid byte generated", byte);
+    return -1;
+  }
+
+  return byte;
+});
+
+// Write byte to host stream
+EM_JS(void, write_byte_to_host, (int streamtype, uint8_t c), {
+  globalThis.ulisp.writeByte(streamtype, c);
+});
+
 #else
 void delay (int millisecs) {
   // TODO:
@@ -2526,68 +2564,110 @@ object *dobody (object *args, object *env, bool star) {
   return eval(tf_progn(results, env), env);
 }
 
-// I2C, serial, WiFi
-
-void I2Cinit (bool enablePullup) {
-  TODO0(I2Cinit);
-}
-int I2Cread () {
-  TODO1(I2Cread, 0);
-}
-void I2Cwrite (uint8_t data) {
-  TODO0(I2Cwrite);
-}
-bool I2Cstart (uint8_t address, uint8_t read) {
- TODO1(I2Cstart, true);
-}
-bool I2Crestart (uint8_t address, uint8_t read) {
-  TODO1(I2Crestart, true);
-}
-void I2Cstop (uint8_t read) {
-  TODO0(I2Cstop);
-}
-
 // Streams
 
 enum stream { SERIALSTREAM, I2CSTREAM, SPISTREAM, SDSTREAM, WIFISTREAM, STRINGSTREAM, GFXSTREAM };
 
-// Simplify board differences
-#if defined(ARDUINO_ADAFRUIT_QTPY_ESP32S2)
-#define ULISP_HOWMANYI2C = 2
-#endif
+// Serial
 
-#define ULISP_WIFI
-
-// WiFiClient client;
-// WiFiServer server(80);
-void spiwrite (char c) { TODO0(spiwrite); }
-void i2cwrite (char c) { TODO0(i2cwrite); }
-#if ULISP_HOWMANYI2C == 2
-void i2c1write (char c) { I2Cwrite(&Wire1, c); }
-#endif
-void serial1write (char c) { TODO0C(serial1write, c); }
-void WiFiwrite (char c) { TODO0C(WiFiwrite, c); }
-#if defined(sdcardsupport)
-File SDpfile, SDgfile;
-void SDwrite (char c) { TODO0C(SDwrite, c); }
-#endif
-#if defined(gfxsupport)
-void gfxwrite (char c) { TODO0C(gfxwrite, c); }
-#endif
-
-int spiread () { TODO1(spiread, 0); }
-int i2cread () { return I2Cread(); }
-#if ULISP_HOWMANYI2C == 2
-int i2c1read () { return I2Cread(&Wire1); }
-#endif
+#if defined(__EMSCRIPTEN__)
+int serial1read () {
+  return read_byte_from_host(SERIALSTREAM);
+}
+void serial1write (char c) {
+  return write_byte_to_host(SERIALSTREAM, c);
+}
+#else
 int serial1read () { TODO1(serial1read, 0); }
-#if defined(sdcardsupport)
-int SDread () { return SDgfile.read(); }
+void serial1write (char c) { TODO0C(serial1write, c); }
 #endif
-int WiFiread () { TODO1(WiFiread, 0); }
 
 void serialbegin (int address, int baud) { TODO0(serialbegin); }
 void serialend (int address) { TODO0(serialend); }
+
+// I2C
+
+#if defined(__EMSCRIPTEN__)
+
+#define ULISP_HOWMANYI2C 2
+
+int I2Cread () {
+  return read_byte_from_host(I2CSTREAM);
+}
+void I2Cwrite (char c) {
+  return write_byte_to_host(I2CSTREAM, (uint8_t) c);
+}
+
+#else
+int I2Cread () { TODO1(I2Cread, 0); }
+void I2Cwrite (fn_charcode c) { TODO0(I2Cwrite); }
+#endif
+
+void I2Cinit (bool enablePullup) { TODO0(I2Cinit); }
+bool I2Cstart (uint8_t address, uint8_t read) { TODO1(I2Cstart, true); }
+bool I2Crestart (uint8_t address, uint8_t read) { TODO1(I2Crestart, true); }
+void I2Cstop (uint8_t read) { TODO0(I2Cstop); }
+
+int i2cread () { return I2Cread(); }
+void i2cwrite (char c) { I2Cwrite(c); }
+// Second I2C channel
+int i2c1read () { return I2Cread(); }
+void i2c1write (char c) { I2Cwrite(c); }
+
+// SPI
+
+#if defined(__EMSCRIPTEN__)
+int spiread () {
+  return read_byte_from_host(SPISTREAM);
+}
+void spiwrite (char c) {
+  return write_byte_to_host(SPISTREAM, (uint8_t) c);
+}
+#else
+int spiread () { TODO1(spiread, 0); }
+void spiwrite (char c) { TODO0(spiwrite); }
+#endif
+
+// SD card
+
+#if defined(__EMSCRIPTEN__)
+int SDread () {
+  return read_byte_from_host(SDSTREAM);
+}
+void SDwrite (char c) {
+  return write_byte_to_host(SDSTREAM, (uint8_t) c);
+}
+#else
+int SDread () { TODO0(SDread); return -1; }
+void SDwrite (char c) { TODO0C(SDwrite, c); }
+#endif
+
+// WiFi
+
+#if defined(__EMSCRIPTEN__)
+
+#define ULISP_WIFI
+
+int WiFiread () {
+  return read_byte_from_host(WIFISTREAM);
+}
+void WiFiwrite (char c) {
+  return write_byte_to_host(WIFISTREAM, (uint8_t) c);
+}
+#else
+int WiFiread () { TODO1(WiFiread, 0); }
+void WiFiwrite (char c) { TODO0C(WiFiwrite, c); }
+#endif
+
+// GFX
+
+#if defined(__EMSCRIPTEN__)
+void gfxwrite (char c) {
+  return write_byte_to_host(GFXSTREAM, (uint8_t) c);
+}
+#else
+void gfxwrite (char c) { TODO0C(gfxwrite, c); }
+#endif
 
 // ***************************************************************
 
@@ -5237,15 +5317,17 @@ object *fn_break (object *args, object *env) {
   If stream is specified the item is read from the specified stream.
 */
 object *fn_read (object *args, object *env) {
+  (void) env;
 #ifdef __EMSCRIPTEN__
-  TODO1(fn_read, nil);
+  // For now, only support reading from the default serial stream
+  if (args != NULL) {
+    error2(PSTR("read with custom streams not yet supported"));
+  }
+  return readmain(gserial_interactive);
 #else
-  // TODO:
-  // (void) env;
-  // gfun_t gfun = gstreamfun(args);
-  // return readmain(gfun);
+  gfun_t gfun = gstreamfun(args);
+  return readmain(gfun);
 #endif
-  return nil;
 }
 
 /*
@@ -5306,16 +5388,20 @@ object *fn_terpri (object *args, object *env) {
   Reads a byte from a stream and returns it.
 */
 object *fn_readbyte (object *args, object *env) {
+  (void) env;
 #if defined(__EMSCRIPTEN__)
-  TODO1(fn_readbyte, nil);
+  // For now, only support reading from the default serial stream
+  // if (args != NULL) {
+  //   error2(PSTR("read-byte with custom streams not yet supported"));
+  // }
+  int stream = args == NULL ? 0 : isstream(first(args)); // Stream type as int
+  int c = read_byte_from_host(stream);
+  return (c == -1) ? nil : number(c);
 #else
-  // TODO:
-  // (void) env;
-  // gfun_t gfun = gstreamfun(args);
-  // int c = gfun();
-  // return (c == -1) ? nil : number(c);
+  gfun_t gfun = gstreamfun(args);
+  int c = gfun();
+  return (c == -1) ? nil : number(c);
 #endif
-  return nil;
 }
 
 /*
@@ -5324,15 +5410,17 @@ object *fn_readbyte (object *args, object *env) {
   If stream is specified the line is read from the specified stream.
 */
 object *fn_readline (object *args, object *env) {
+  (void) env;
 #if defined(__EMSCRIPTEN__)
-  TODO1(fn_readline, nil);
+  // For now, only support reading from the default serial stream
+  if (args != NULL) {
+    error2(PSTR("read-line with custom streams not yet supported"));
+  }
+  return readstring('\n', false, gserial_interactive);
 #else
-  // TODO:
-  // (void) env;
-  // gfun_t gfun = gstreamfun(args);
-  // return readstring('\n', false, gfun);
+  gfun_t gfun = gstreamfun(args);
+  return readstring('\n', false, gfun);
 #endif
-  return nil;
 }
 
 /*
@@ -5342,11 +5430,16 @@ object *fn_readline (object *args, object *env) {
 object *fn_writebyte (object *args, object *env) {
   (void) env;
   int c = checkinteger(first(args));
+#if defined(__EMSCRIPTEN__)
+  int stream = args == NULL ? 0 : isstream(first(cdr(args))); // Stream type as int
+  write_byte_to_host(stream, c);
+#else
   pfun_t pfun = pstreamfun(cdr(args));
   if (c == '\n' && pfun == pserial) {
     putchar('\n');
   }
   else (pfun)(c);
+#endif
   return nil;
 }
 
@@ -7820,7 +7913,7 @@ object *eval (object *form, object *env) {
     Context = bname;
     checkminmax(bname, nargs);
     intptr_t call = lookupfn(bname);
-    if (call == NULL) error(illegalfn, function);
+    if (!call) error(illegalfn, function);
     object *result = ((fn_ptr_type)call)(args, env);
     unprotect();
     return result;
@@ -8289,6 +8382,11 @@ int input_pos = 0;
 int input_len = 0;
 bool loop_done = false;
 
+// Interactive input buffer for read/read-line
+char *interactive_input_buf = NULL;
+int interactive_input_pos = 0;
+int interactive_input_len = 0;
+
 /*
   gserial - gets a character from the serial port
 */
@@ -8331,6 +8429,40 @@ int gserial () {
 //   return temp;
 // #endif
 }
+
+#if defined(__EMSCRIPTEN__)
+/*
+  gserial_interactive - gets a character from interactive input, requesting from host when needed
+*/
+int gserial_interactive () {
+  if (LastChar) {
+    char temp = LastChar;
+    LastChar = 0;
+    return temp;
+  }
+
+  // Check if we need to request more input
+  if (interactive_input_pos >= interactive_input_len) {
+    // Free the previous input buffer if it exists
+    if (interactive_input_buf != NULL) {
+      free(interactive_input_buf);
+      interactive_input_buf = NULL;
+    }
+
+    // Request input from the host
+    interactive_input_buf = read_line_from_host();
+    interactive_input_pos = 0;
+    interactive_input_len = strlen(interactive_input_buf);
+
+    // If input is empty, treat as EOF
+    if (interactive_input_len == 0) {
+      return -1;
+    }
+  }
+
+  return interactive_input_buf[interactive_input_pos++];
+}
+#endif
 
 /*
   nextitem - reads the next token from the specified stream
