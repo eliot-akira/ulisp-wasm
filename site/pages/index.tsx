@@ -25,6 +25,8 @@ const exampleCode = `(defun fib (n)
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState(' ')
   const [currentStep, setStep] = useState(0)
+  const [inputPrompt, setInputPrompt] = useState(false)
+  const [inputValue, setInputValue] = useState('')
 
   const shareLinkTextDefault = 'Create share link'
   const [shareLinkText, setShareLinkText] = useState(shareLinkTextDefault)
@@ -32,6 +34,7 @@ export default function Page() {
   const editorRef = useRef(null)
   const evalRef = useRef(null)
   const editorViewRef = useRef<EditorView>(null)
+  const inputResolverRef = useRef(null)
 
   const consoleOutRef = useRef()
   consoleOutRef.current = consoleOut
@@ -70,6 +73,32 @@ export default function Page() {
           print(arg) {
             const prev = consoleOutRef.current.trim()
             setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+          },
+          printError(arg) {
+            // TODO: Style error differently
+            const prev = consoleOutRef.current.trim()
+            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+          },
+          readLine() {
+            return new Promise((resolve) => {
+              setInputPrompt(true)
+              setInputValue('')
+              inputResolverRef.current = resolve
+            })
+          },
+          async readByte(streamType: number): Promise<number> {
+            // TODO: Buffer input in console, and release each byte when called
+
+            return -1 // No ipnut
+          },
+          async writeByte(streamType: number, byte: number): Promise<void> {
+            console.log('writeByte', streamType, byte)
+            if (byte < 0 || byte > 255) {
+              console.warn('Invalid byte range')
+              return
+            }
+            const prev = consoleOutRef.current.trim()
+            setConsoleOut(prev + String.fromCharCode(byte))
           }
         })
         lisp.stop = async () => {
@@ -213,6 +242,39 @@ export default function Page() {
           <pre className="font-mono py-2 px-4">
             <code className="text-wrap">{consoleOut}</code>
           </pre>
+
+          {inputPrompt && (
+            <div className="border-t border-slate-300 p-2 bg-yellow-50">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (inputResolverRef.current) {
+                    inputResolverRef.current(inputValue + '\n')
+                    inputResolverRef.current = null
+                  }
+                  setInputPrompt(false)
+                  setInputValue('')
+                }}
+              >
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="flex-grow px-2 py-1 border border-slate-300 rounded"
+                    placeholder="Enter input..."
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1 bg-blue-100 shadow-sm active:shadow-none rounded cursor-pointer"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </section>
       </div>
     </div>
