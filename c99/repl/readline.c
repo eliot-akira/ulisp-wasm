@@ -117,7 +117,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include "linenoise.h"
+#include "readline.h"
 
 // Polyfill
 char *strdup(const char *str)

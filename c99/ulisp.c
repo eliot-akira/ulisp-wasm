@@ -2600,7 +2600,7 @@ void I2Cwrite (char c) {
 
 #else
 int I2Cread () { TODO1(I2Cread, 0); }
-void I2Cwrite (fn_charcode c) { TODO0(I2Cwrite); }
+void I2Cwrite (char c) { TODO0(I2Cwrite); }
 #endif
 
 void I2Cinit (bool enablePullup) { TODO0(I2Cinit); }
@@ -2638,7 +2638,7 @@ void SDwrite (char c) {
   return write_byte_to_host(SDSTREAM, (uint8_t) c);
 }
 #else
-int SDread () { TODO0(SDread); return -1; }
+int SDread () { TODO1(SDread, -1); }
 void SDwrite (char c) { TODO0C(SDwrite, c); }
 #endif
 
