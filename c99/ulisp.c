@@ -50,8 +50,8 @@ const char LispLibrary[] =
 #define __STANDALONE__
 #endif
 
-// Can be both Emscripten and standalone
-#if defined(__STANDALONE__)
+// Can be both Emscripten and standalone - Windows 32/64 has no terminal I/O
+#if defined(__STANDALONE__) && !defined(_WIN32)
 #include "repl/readline.h"
 #endif
 
@@ -8859,9 +8859,21 @@ void evaluate (const char *line) {
   loop();
 }
 
+// Standalone build with main
 #if defined(__STANDALONE__) && !defined(__HAS_MAIN__)
 
-// For standalone build
+// TODO: CLI compatible with Cygwin?
+#if defined(_WIN32)
+int main(int argc, char *argv[]) {
+
+  setup();
+
+  pfstring("uLisp ", pserial);
+  print_version();
+}
+#else
+
+// POSIX-compatible terminal CLI and REPL with readline
 int main(int argc, char *argv[]) {
 
   setup();
@@ -8885,5 +8897,5 @@ int main(int argc, char *argv[]) {
     linenoiseFree(line);
   }
 }
-
+#endif
 #endif

@@ -103,9 +103,9 @@ switch (command) {
       'aarch64-linux',
       'aarch64-macos',
 
-      // readline doesn't support Windows
-      // 'x86_64-windows',
-      // 'aarch64-windows',
+      // Windows
+      'x86_64-windows',
+      'aarch64-windows'
     ]) {
       console.log('Platform:', platform)
       const [arch, os] = platform.split('-')
@@ -117,12 +117,19 @@ switch (command) {
           ['x86_64-linux', 'aarch64-linux', 'x86_64-macos', 'aarch64-macos'].includes(platform)
             ? '-D__HAS_RANDOM__'
             : ''
-        } ${
-          ['x86_64-linux', 'aarch64-linux'].includes(platform) ? '-D_XOPEN_SOURCE' : ''
-        } -o ${destFile} c99/ulisp.c c99/repl/readline.c`
+        } ${['x86_64-linux', 'aarch64-linux'].includes(platform) ? '-D_XOPEN_SOURCE' : ''} -o ${destFile} ${
+          platform.endsWith('windows')
+            ? [
+                // Prevent generation of PDB file for debug
+                '-Xlinker',
+                '/pdb:/dev/null',
+                // No readline for Windows
+                'c99/ulisp.c'
+              ]
+            : ['c99/ulisp.c', 'c99/repl/readline.c']
+        }`
         console.log('Build success')
         console.log(result.stdout.toString())
-
       } catch (e) {
         console.log(e.stderr ? e.stderr.toString() : e)
       }
