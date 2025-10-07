@@ -25,6 +25,7 @@ const exampleCode = `(defun fib (n)
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState(' ')
   const [currentStep, setStep] = useState(0)
+  const [parinferMode, setParinferMode] = useState<'smart' | 'paren' | 'indent' | 'off'>('smart')
   const [inputPrompt, setInputPrompt] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
@@ -162,7 +163,34 @@ export default function Page() {
         </div>
 
         <section className="my-4 border border-slate-300">
-          <h4 className="py-2 px-4 bg-slate-100 border-b border-slate-300">Editor</h4>
+          <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
+            <h4 className="flex-grow">Editor</h4>
+            <div className="text-xs text-slate-800 flex items-center gap-2">
+              <label htmlFor="parinfer-mode">Infer parentheses:</label>
+              <select
+                id="parinfer-mode"
+                value={parinferMode}
+                onChange={(e) => {
+                  const newMode = e.target.value as 'smart' | 'paren' | 'indent' | 'off'
+                  setParinferMode(newMode)
+                  if (editorViewRef.current) {
+                    if (newMode === 'off') {
+                      editor.setParinferEnabled(editorViewRef.current, false)
+                    } else {
+                      editor.setParinferEnabled(editorViewRef.current, true)
+                      editor.switchParinferMode(editorViewRef.current, newMode)
+                    }
+                  }
+                }}
+                className="border border-slate-300 rounded px-1 py-0.5 text-xs"
+              >
+                <option value="smart">Smart</option>
+                <option value="paren">Paren</option>
+                <option value="indent">Indent</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+          </div>
           <div className="my-1 mx-1" ref={editorRef}></div>
         </section>
 
