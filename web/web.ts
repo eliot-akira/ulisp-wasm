@@ -20,9 +20,6 @@ export async function createLisp(moduleArgs: CreateLispOptions = {}) {
    * TODO: Module expects a global variable `ulisp`. Move them as callbacks
    * passed to createLispWasmModule().
    */
-  // Store Module reference for flushOutput
-  let WasmModule: any = null
-
   const ulisp = (globalThis.ulisp = {
     // run,
     // Called from Lisp code running on WASM
@@ -71,15 +68,6 @@ export async function createLisp(moduleArgs: CreateLispOptions = {}) {
       } else if (print) {
         print(data)
       }
-    },
-    // Flush output - called before input operations
-    // This is now handled in C by writing a newline to force Emscripten to flush
-    flushOutput() {
-      // No-op: The C code handles flushing by writing a newline when needed
-    },
-    // Store Module reference when it's created
-    setModule(module: any) {
-      WasmModule = module
     },
     escape() {
       return 0 // Return 1 to stop the runtime
