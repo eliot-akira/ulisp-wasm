@@ -1,3 +1,5 @@
+// Readline replacement based of linenoise
+
 /* linenoise.c -- guerrilla line editing library against the idea that a
  * line editing lib needs to be 20,000 lines of C code.
  *
@@ -115,7 +117,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include "linenoise.h"
+#include "readline.h"
 
 // Polyfill
 char *strdup(const char *str)

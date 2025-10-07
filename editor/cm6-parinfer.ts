@@ -1,8 +1,8 @@
 // Does not (yet) support:
 // - styling parentrails
 
-import type { Parinfer, ParinferChange, ParinferOptions, ParinferResult, ParinferError } from "./parinfer.d.ts"
-import parinfer from "./parinfer.ts"
+import type { Parinfer, ParinferChange, ParinferOptions, ParinferResult, ParinferError } from "../parinfer/parinfer.d.ts"
+import parinfer from "../parinfer/parinfer.ts"
 const parinferLib = parinfer as Parinfer
 import type { ChangeSet, ChangeSpec, Extension, StateEffectType, Text, Transaction, TransactionSpec } from "@codemirror/state"
 import { EditorSelection, EditorState, StateEffect, StateField } from "@codemirror/state"

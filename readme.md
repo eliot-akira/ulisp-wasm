@@ -2,11 +2,17 @@
 
 ![Screencast](public/media/screencast.gif)
 
-[uLisp](http://www.ulisp.com) is a programming language for microcontrollers and embedded devices. This project `ulisp-wasm` is a port of uLisp to WebAssembly that runs in the browser and on server side.
+[uLisp](http://www.ulisp.com) is a programming language for microcontrollers and embedded devices. This project `ulisp-wasm` is a port of uLisp to C99 and WebAssembly that runs in the browser, on servers and the terminal command line.
 
 See [the Playground page](https://eliot-akira.github.io/ulisp-wasm/) and [introduction post](http://forum.ulisp.com/t/ulisp-port-to-c-and-webassembly/1729) on the forum.
 
-Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on Wasm has its own process thread with 64K of memory, and an event loop to yield control to the host on every instruction.
+#### Current state
+
+Early stage but the basics are working. 
+
+- Parse and evaluate a Lisp expression. The runtime on Wasm has its own process thread with 64K of memory, and an event loop that optionally yields control to the host on every instruction.
+- Pass the entire test suite in the uLisp builder.
+- Run uLisp interpreter and REPL across platforms: plain C build, Wasm runtimes, Node, Bun, browser; Linux laptop, Raspberry Pi, ESP32.
 
 ## Changes
 
@@ -53,6 +59,8 @@ Prerequisites:
 - [Docker](https://docs.docker.com/engine/) to run Emscripten in a container; or directly use `emcc` from [Emscripten SDK](https://github.com/emscripten-core/emsdk) ([install options](https://emscripten.org/docs/getting_started/downloads.html))
 - [Bun](https://bun.sh/)
 
+See `package.json` for available CLI commands.
+
 ### Install
 
 ```sh
@@ -69,6 +77,12 @@ Build frontend app as static site, watch files for changes, rebuild and reload p
 bun run start
 ```
 
+To run the above and develop/rebuild the C source in parallel:
+
+```sh
+bun run dev
+```
+
 ### Build
 
 Build for production with minified assets.
@@ -77,7 +91,73 @@ Build for production with minified assets.
 bun run build
 ```
 
+Below scripts are ways to run functions in `build.ts`.
+
+```sh
+bun build.ts [command] (...options)
+```
+
+#### Build targets
+
+```sh
+bun build:node # Node.js target: Wasm library and CLI
+bun build:site # Web playground site
+bun build:web  # Web target
+```
+
+##### Cross-platform builds
+
+Requires Bun. Optionally Clang for native build, Zig to cross-compile.
+
+```sh
+bun build:bun  # Single-file executable with Bun runtime
+bun build:cli  # CLI/REPL as native C binary
+```
+
+These produce binaries in the `build` folder for the following targets.
+
+- linux-arm64
+- linux-x64
+- macos-arm64
+- macos-x64
+- windows-x64 \*
+- windows-arm64 \*
+
+\* Windows support is partial: only Bun build on x64. REPL uses a `readline` library with terminal I/O, which doesn't exist on Windows. Possibly CLI could exclude the feature based on build target.
+
+##### Experimental
+
+```sh
+bun build:wasi # Wasm target with WASI (WebAssembly System Interface)
+bun build:zig  # Zig port of ulisp-c
+```
+
 ## Code organization
+
+The project is a monorepo with a number of subprojects. The main ones are `c99`, `site`, and `web`.
+
+- arm - uLisp for ARM processors
+- arm-assembler - ARM assembler
+- arm-compiler - ARM compiler
+- avr - uLisp for AVR processors
+- bignums - Arbitrary-precision extension
+- builder - Original builder using Common Lisp
+- c99 - C99 port of uLisp
+- cli - Command-line interface
+- esp - uLisp for ESP32
+- examples - Example code collection
+- node - Node.js version using uLisp Wasm
+- riscv - uLisp for RISC-V processors
+- riscv-assembler - RISC-V assembler
+- riscv-compiler - RISC-V compiler
+- site - Web playground site
+- tests - Test suite
+- wasi - Wasm port for runtimes with WASI (WebAssembly System Interface)
+- web - Web version based on uLisp Wasm
+- zero - uLisp Zero is a minimal Lisp implementation for reference
+- zig - Zig port of uLisp automatically translated from C
+
+### `ulisp.c`
 
 From [documentation of uLisp builder](http://www.ulisp.com/show?3F07)
 
@@ -150,6 +230,20 @@ From `ulisp-builder/build.lisp`
 
 - [Graphics display interface in Lisp](http://www.ulisp.com/show?23QU)
 - [Plotting to a colour TFT display](http://www.ulisp.com/show?2NSB)
+
+## Streams
+
+See [the article on Streams](http://www.ulisp.com/show?5837) on the uLisp site.
+
+| Stream | Streamtype | Description |
+|---|---|---|
+| SERIALSTREAM | 0 | Reading from and writing to a Serial interface |
+| I2CSTREAM | 1 | Reading from and writing to an I2C device |
+| SPISTREAM | 2 | Reading from and writing to an SPI device |
+| SDSTREAM | 3 | Reading from and writing to SD cards |
+| WIFISTREAM | 4 | Reading from and writing to Wi-Fi protocols |
+| STRINGSTREAM | 5 | Reading from or writing to a Lisp string |
+| GFXSTREAM | 6 | Writing text to a TFT colour display |
 
 ## Graphics
 

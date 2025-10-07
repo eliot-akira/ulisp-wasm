@@ -26,7 +26,8 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src",
-    "site"
+    "parinfer",
+    "site",
+    "web"
   ]
 }
