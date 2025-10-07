@@ -907,6 +907,12 @@ export default (function () { // start module anonymous scope
   function onQuote (result) {
     if (result.isInStr) {
       result.isInStr = false
+      // If we're exiting a string and we have a deferred indentX (from skipping
+      // correctParenTrail when entering the string), call it now. This handles
+      // single-line strings where the indentation should affect paren structure.
+      if (result.mode === INDENT_MODE && result.indentX !== UINT_NULL) {
+        correctParenTrail(result, result.indentX)
+      }
     } else if (result.isInComment) {
       result.quoteDanger = !result.quoteDanger
       if (result.quoteDanger) {
@@ -1470,7 +1476,13 @@ export default (function () { // start module anonymous scope
     }
 
     if (result.mode === INDENT_MODE) {
-      correctParenTrail(result, result.x)
+      // Skip correctParenTrail if we're about to enter a string, since string
+      // content indentation is not structural. We'll defer this until end of line
+      // to distinguish single-line strings (should process) from multi-line strings (should not).
+      const enteringString = (result.ch === DOUBLE_QUOTE && !result.isInStr && !result.isEscaped)
+      if (!enteringString) {
+        correctParenTrail(result, result.x)
+      }
 
       const opener = peek(result.parenStack, 0)
       if (opener && shouldAddOpenerIndent(result, opener)) {
