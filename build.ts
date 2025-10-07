@@ -60,15 +60,38 @@ switch (command) {
    * Build CLI
    */
   case 'build:cli':
-    console.log('Using clang')
-    // -lm - Link libm, which contains all the floating point math routines, including fmod
-    // -lreadline - Replaced by linenoise because readline kept throwing segmentation fault
-    // -D_DEFAULT_SOURCE to define fchmod in #include <sys/stat.h>
-    // -D_XOPEN_SOURCE to define fileno in #include <stdio.h>
+    await fs.mkdir('build', { recursive: true })
+
+    // Use Clang and/or Zig cc
+
     try {
-      await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli c99/ulisp.c c99/repl/readline.c`
+      console.log('Checking Clang version')
+      await $`clang --version`
+
+      console.log('Using clang')
+      // -lm - Link libm, which contains all the floating point math routines, including fmod
+      // -lreadline - Replaced by linenoise because readline kept throwing segmentation fault
+      // -D_DEFAULT_SOURCE to define fchmod in #include <sys/stat.h>
+      // -D_XOPEN_SOURCE to define fileno in #include <stdio.h>
+      try {
+        await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli -I c99 c99/ulisp.c c99/repl/readline.c`
+      } catch (e) {
+        console.log(e.stderr.toString())
+
+        // Exit if Clang build fails - No need to fall through to Zig cc
+        break
+      }
     } catch (e) {
-      console.log(e.stderr.toString())
+      console.log('Clang not found - Skipping native build')
+      // break
+    }
+
+    try {
+      console.log('Checking Zig version')
+      await $`zig version`
+    } catch (e) {
+      console.log('Zig not found - Skipping cross-platform builds')
+      break
     }
 
     console.log('Using Zig cc')
@@ -76,11 +99,13 @@ switch (command) {
       // zig targets | grep x86_64-
       'x86_64-linux',
       'x86_64-macos',
-      // 'x86_64-windows',
       // zig targets | grep aarch64-
       'aarch64-linux',
-      'aarch64-macos'
-      // 'aarch64-windows'
+      'aarch64-macos',
+
+      // readline doesn't support Windows
+      // 'x86_64-windows',
+      // 'aarch64-windows',
     ]) {
       console.log('Platform:', platform)
       const [arch, os] = platform.split('-')
@@ -95,7 +120,9 @@ switch (command) {
         } ${
           ['x86_64-linux', 'aarch64-linux'].includes(platform) ? '-D_XOPEN_SOURCE' : ''
         } -o ${destFile} c99/ulisp.c c99/repl/readline.c`
+        console.log('Build success')
         console.log(result.stdout.toString())
+
       } catch (e) {
         console.log(e.stderr ? e.stderr.toString() : e)
       }
@@ -105,6 +132,7 @@ switch (command) {
    * Build server with Bun
    */
   case 'build:bun':
+    await fs.mkdir('build', { recursive: true })
     try {
       for (const platform of [
         'linux-x64',

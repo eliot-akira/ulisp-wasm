@@ -6,7 +6,13 @@
 
 See [the Playground page](https://eliot-akira.github.io/ulisp-wasm/) and [introduction post](http://forum.ulisp.com/t/ulisp-port-to-c-and-webassembly/1729) on the forum.
 
-Status: **Draft** - It can parse and evaluate a Lisp expression. The runtime on Wasm has its own process thread with 64K of memory, and an event loop to yield control to the host on every instruction.
+#### Current state
+
+Early stage but the basics are working. 
+
+- Parse and evaluate a Lisp expression. The runtime on Wasm has its own process thread with 64K of memory, and an event loop that optionally yields control to the host on every instruction.
+- Pass the entire test suite in the uLisp builder.
+- Run uLisp interpreter and REPL across platforms: plain C build, Wasm runtimes, Node, Bun, browser; Linux laptop, Raspberry Pi, ESP32.
 
 ## Changes
 
@@ -83,6 +89,47 @@ Build for production with minified assets.
 
 ```sh
 bun run build
+```
+
+Below scripts are ways to run functions in `build.ts`.
+
+```sh
+bun build.ts [command] (...options)
+```
+
+#### Build targets
+
+```sh
+bun build:node # Node.js target: Wasm library and CLI
+bun build:site # Web playground site
+bun build:web  # Web target
+```
+
+##### Cross-platform builds
+
+Requires Bun. Optionally Clang for native build, Zig to cross-compile.
+
+```sh
+bun build:bun  # Single-file executable with Bun runtime
+bun build:cli  # CLI/REPL as native C binary
+```
+
+These produce binaries in the `build` folder for the following targets.
+
+- linux-arm64
+- linux-x64
+- macos-arm64
+- macos-x64
+- windows-x64 \*
+- windows-arm64 \*
+
+\* Windows support is partial: only Bun build on x64. REPL uses a `readline` library with terminal I/O, which doesn't exist on Windows. Possibly CLI could exclude the feature based on build target.
+
+##### Experimental
+
+```sh
+bun build:wasi # Wasm target with WASI (WebAssembly System Interface)
+bun build:zig  # Zig port of ulisp-c
 ```
 
 ## Code organization
