@@ -10,7 +10,8 @@
     "build:site:client": "vite build",
     "build:site:server": "vite build --ssr site/server.tsx",
     "generate:site": "node build/server/server.js",
-    "clean:site": "rm -rf build",
+    "clean": "rm -rf build",
+    "clean:site": "rm -rf build/server; rm -rf docs",
     "build": "bun build:site",
     "build:all": "bun build:web && bun build:site && bun build:node",
     "build:bun": "bun build.ts build:bun",
@@ -25,6 +26,8 @@
     "dev:node": "chokidar \"src/**\" \"node/**/*.js\" --ignore \"**/ulisp.js\" --initial --silent --command 'bun run build:node && bun tests/index.ts'",
     "test": "bun run tests/index.ts",
     "test:dev": "chokidar \"tests/**/*.ts\" --initial --silent --command 'bun tests/index.ts'",
+    "test:parinfer": "bun run parinfer/tests/index.ts",
+    "test:parinfer:dev": "chokidar \"parinfer/tests/**/*.ts\" --initial --silent --command 'bun parinfer/tests/index.ts'",
     "tdd": "concurrently --names wasm,test 'bun run dev:node' 'bun run test:dev'",
     "update": "git-subrepo pull builder",
     "format": "prettier -w site"

@@ -166,7 +166,7 @@ function testStructure (testCase, mode) {
 // Diff the annotated text instead of the data for easy reading.
 // (requires extra parser/printer code that we may not want to port)
 
-const parinferTest = require('../testParsingLib.js')
+const parinferTest = require('./parser.js')
 
 function testString (testCase, mode) {
   const expected = testCase.result

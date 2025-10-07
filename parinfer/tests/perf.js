@@ -1,6 +1,6 @@
-const fs = require('fs')
-const path = require('path')
-const parinfer = require('../parinfer.js')
+import fs from 'fs'
+import path from 'path'
+import parinfer from '../parinfer.js'
 
 function timeProcess (filename, text, options) {
   const numChars = text.length
