@@ -446,6 +446,15 @@ void delay (int millisecs) {
 }
 
 /**
+ * Flush output before reading input
+ */
+EM_JS(void, flush_output, (), {
+  if (globalThis.ulisp && globalThis.ulisp.flushOutput) {
+    globalThis.ulisp.flushOutput();
+  }
+});
+
+/**
  * Read line from host console. Caller must free(result) when done.
  */
 EM_ASYNC_JS(char*, read_line_from_host, (), {
@@ -8447,6 +8456,14 @@ int gserial_interactive () {
     if (interactive_input_buf != NULL) {
       free(interactive_input_buf);
       interactive_input_buf = NULL;
+    }
+
+    // Flush output before requesting input to ensure any buffered output is displayed
+    // Emscripten only flushes stdout on newlines, so we force it by writing a newline
+    // if the last character wasn't already a newline
+    if (LastPrint != '\n' && LastPrint != 0) {
+      putchar('\n');
+      fflush(stdout);
     }
 
     // Request input from the host

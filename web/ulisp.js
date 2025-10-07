@@ -1670,6 +1670,7 @@ var ASM_CONSTS = {
  55051: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await globalThis.ulisp.delay( millisecs ); }); }
+function flush_output() { if (globalThis.ulisp && globalThis.ulisp.flushOutput) { globalThis.ulisp.flushOutput(); } }
 function __asyncjs__read_line_from_host() { return Asyncify.handleAsync(async () => { const input = await globalThis.ulisp.readLine(); const len = lengthBytesUTF8(input) + 1; const ptr = _malloc(len); stringToUTF8(input, ptr, len); return ptr; }); }
 function __asyncjs__read_byte_from_host(streamtype) { return Asyncify.handleAsync(async () => { const byte = await globalThis.ulisp.readByte(streamtype); if (byte === -1) { return -1; } if (byte < 0 || byte > 255) { console.error("Invalid byte generated", byte); return -1; } return byte; }); }
 function write_byte_to_host(streamtype,c) { globalThis.ulisp.writeByte(streamtype, c); }
@@ -1715,11 +1716,11 @@ var wasmImports = {
 var wasmExports = await createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
 var _free = Module['_free'] = createExportWrapper('free', 1);
+var _fflush = createExportWrapper('fflush', 1);
 var _print_version = Module['_print_version'] = createExportWrapper('print_version', 0);
 var _setup = Module['_setup'] = createExportWrapper('setup', 0);
 var _stop_loop = Module['_stop_loop'] = createExportWrapper('stop_loop', 0);
 var _evaluate = Module['_evaluate'] = createExportWrapper('evaluate', 1);
-var _fflush = createExportWrapper('fflush', 1);
 var _strerror = createExportWrapper('strerror', 1);
 var _malloc = createExportWrapper('malloc', 1);
 var _setThrew = createExportWrapper('setThrew', 2);
