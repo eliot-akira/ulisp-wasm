@@ -49,7 +49,8 @@ export default function Page() {
       const code = editorViewRef.current.state.doc.toString()
       try {
         // setConsoleOut('..Evaluating')
-        setConsoleOut(' ')
+        consoleOutRef.current = ' '
+        setConsoleOut(consoleOutRef.current)
 
         const result = await lisp.eval(code)
 
@@ -73,12 +74,14 @@ export default function Page() {
           },
           print(arg) {
             const prev = consoleOutRef.current.trim()
-            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+            consoleOutRef.current = (prev ? prev + '\n' : prev) + arg + '\n'
+            setConsoleOut(consoleOutRef.current)
           },
           printError(arg) {
             // TODO: Style error differently
             const prev = consoleOutRef.current.trim()
-            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+            consoleOutRef.current = (prev ? prev + '\n' : prev) + arg + '\n'
+            setConsoleOut(consoleOutRef.current)
           },
           readLine() {
             return new Promise((resolve) => {
@@ -99,7 +102,8 @@ export default function Page() {
               return
             }
             const prev = consoleOutRef.current.trim()
-            setConsoleOut(prev + String.fromCharCode(byte))
+            consoleOutRef.current = prev + String.fromCharCode(byte)
+            setConsoleOut(consoleOutRef.current)
           }
         })
         lisp.stop = async () => {

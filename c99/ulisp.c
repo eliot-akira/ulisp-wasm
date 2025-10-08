@@ -446,15 +446,6 @@ void delay (int millisecs) {
 }
 
 /**
- * Flush output before reading input
- */
-EM_JS(void, flush_output, (), {
-  if (globalThis.ulisp && globalThis.ulisp.flushOutput) {
-    globalThis.ulisp.flushOutput();
-  }
-});
-
-/**
  * Read line from host console. Caller must free(result) when done.
  */
 EM_ASYNC_JS(char*, read_line_from_host, (), {
