@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import * as editor from '../../editor'
+import * as editor from '@/editor'
 import * as base64Url from 'base64-compressor'
 import { createLisp } from '../lib/create-lisp'
 import { EditorView } from '@codemirror/view'
@@ -25,7 +25,6 @@ const exampleCode = `(defun fib (n)
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState(' ')
   const [currentStep, setStep] = useState(0)
-  const [parinferMode, setParinferMode] = useState<'smart' | 'paren' | 'indent' | 'off'>('smart')
   const [inputPrompt, setInputPrompt] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
@@ -49,8 +48,7 @@ export default function Page() {
       const code = editorViewRef.current.state.doc.toString()
       try {
         // setConsoleOut('..Evaluating')
-        consoleOutRef.current = ' '
-        setConsoleOut(consoleOutRef.current)
+        setConsoleOut(' ')
 
         const result = await lisp.eval(code)
 
@@ -74,36 +72,14 @@ export default function Page() {
           },
           print(arg) {
             const prev = consoleOutRef.current.trim()
-            consoleOutRef.current = (prev ? prev + '\n' : prev) + arg + '\n'
-            setConsoleOut(consoleOutRef.current)
+            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
           },
-          printError(arg) {
-            // TODO: Style error differently
-            const prev = consoleOutRef.current.trim()
-            consoleOutRef.current = (prev ? prev + '\n' : prev) + arg + '\n'
-            setConsoleOut(consoleOutRef.current)
-          },
-          readLine() {
+          getInput() {
             return new Promise((resolve) => {
               setInputPrompt(true)
               setInputValue('')
               inputResolverRef.current = resolve
             })
-          },
-          async readByte(streamType: number): Promise<number> {
-            // TODO: Buffer input in console, and release each byte when called
-
-            return -1 // No ipnut
-          },
-          async writeByte(streamType: number, byte: number): Promise<void> {
-            console.log('writeByte', streamType, byte)
-            if (byte < 0 || byte > 255) {
-              console.warn('Invalid byte range')
-              return
-            }
-            const prev = consoleOutRef.current.trim()
-            consoleOutRef.current = prev + String.fromCharCode(byte)
-            setConsoleOut(consoleOutRef.current)
           }
         })
         lisp.stop = async () => {
@@ -167,34 +143,7 @@ export default function Page() {
         </div>
 
         <section className="my-4 border border-slate-300">
-          <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
-            <h4 className="flex-grow">Editor</h4>
-            <div className="text-xs text-slate-800 flex items-center gap-2">
-              <label htmlFor="parinfer-mode">Infer parentheses:</label>
-              <select
-                id="parinfer-mode"
-                value={parinferMode}
-                onChange={(e) => {
-                  const newMode = e.target.value as 'smart' | 'paren' | 'indent' | 'off'
-                  setParinferMode(newMode)
-                  if (editorViewRef.current) {
-                    if (newMode === 'off') {
-                      editor.setParinferEnabled(editorViewRef.current, false)
-                    } else {
-                      editor.setParinferEnabled(editorViewRef.current, true)
-                      editor.switchParinferMode(editorViewRef.current, newMode)
-                    }
-                  }
-                }}
-                className="border border-slate-300 rounded px-1 py-0.5 text-xs"
-              >
-                <option value="smart">Smart</option>
-                <option value="paren">Paren</option>
-                <option value="indent">Indent</option>
-                <option value="off">Off</option>
-              </select>
-            </div>
-          </div>
+          <h4 className="py-2 px-4 bg-slate-100 border-b border-slate-300">Editor</h4>
           <div className="my-1 mx-1" ref={editorRef}></div>
         </section>
 
