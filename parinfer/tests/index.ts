@@ -82,16 +82,4 @@ for (const mode of modes) {
   })
 }
 
-// test('Paren mode', async () => {
-//   const testCases = JSON.parse(await fs.readFile(path.join(__dirname, './cases/paren-mode.json'), 'utf8'))
-
-//   ok(Array.isArray(testCases), 'test cases loaded as array')
-// })
-
-// test('Smart mode', async () => {
-//   const testCases = JSON.parse(await fs.readFile(path.join(__dirname, './cases/smart-mode.json'), 'utf8'))
-
-//   ok(Array.isArray(testCases), 'test cases loaded as array')
-// })
-
 run()
