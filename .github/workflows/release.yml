@@ -1,0 +1,40 @@
+name: Release
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      # - name: Install dependencies
+      #   run: bun install
+      - name: Cross compile CLI using zig cc
+        run: bun build.ts build:cli
+      - name: Add latest tag as needed
+        uses: EndBug/latest-tag@latest
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+      - name: Release tag
+        uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          files: build/*
+      - name: Release preview at latest commit
+        uses: softprops/action-gh-release@v2
+        if: ${{ ! startsWith(github.ref, 'refs/tags/') }}
+        with:
+          files: build/*
+          tag_name: latest
+          make_latest: true
