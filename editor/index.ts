@@ -78,8 +78,8 @@ function createEditorState(initialContents, options = {}) {
       // basicSetup,
       clojure(),
       parinferExtension({
-        enabled: true,
-        mode: 'smart' // smart, parent, indent
+        enabled: false,
+        mode: 'smart' // smart, parent, indent, off
       }),
       themeBase,
       light,

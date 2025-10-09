@@ -25,7 +25,7 @@ const exampleCode = `(defun fib (n)
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState('')
   const [currentStep, setStep] = useState(0)
-  const [parinferMode, setParinferMode] = useState<'smart' | 'paren' | 'indent' | 'off'>('smart')
+  const [parinferMode, setParinferMode] = useState<'smart' | 'paren' | 'indent' | 'off'>('off')
   const [inputPrompt, setInputPrompt] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
