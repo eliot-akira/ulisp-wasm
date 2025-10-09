@@ -170,7 +170,7 @@ export default function Page() {
           <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
             <h4 className="flex-grow">Editor</h4>
             <div className="text-xs text-slate-800 flex items-center gap-2">
-              <label htmlFor="parinfer-mode">Infer parentheses:</label>
+              <label htmlFor="parinfer-mode">Edit mode</label>
               <select
                 id="parinfer-mode"
                 value={parinferMode}
