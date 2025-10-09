@@ -286,6 +286,16 @@ enum flag { PRINTREADABLY, RETURNFLAG, ESCAPE, EXITEDITOR, LIBRARYLOADED, NOESC,
 typedef uint16_t flags_t;
 volatile flags_t Flags = 1<<PRINTREADABLY; // Set by default
 
+// Extended user flags
+enum userflag { SERIAL_CONSOLE };
+typedef uint16_t userflags_t;
+volatile userflags_t UserFlags = 0;
+
+// Like set/clr/tstflag but dynamic at runtime
+void setuserflag(enum userflag x) { UserFlags = UserFlags | 1<<(x); }
+void clruserflag(enum userflag x) { UserFlags = UserFlags & ~(1<<(x)); }
+bool tstuserflag(enum userflag x) { return UserFlags & 1<<(x); }
+
 // Forward references
 object *tee;
 void pfstring (const char *s, pfun_t pfun);
@@ -7972,7 +7982,10 @@ object *eval (object *form, object *env) {
 void pserial (char c) {
   LastPrint = c;
 
-  if (c == '\n') putchar('\r');
+  // Add CR (carriage return) before LF (line feed) for console via serial, not in browser or terminal
+  if (c == '\n' && tstuserflag(SERIAL_CONSOLE)) {
+    putchar('\r');
+  }
   putchar(c);
 }
 
@@ -8752,7 +8765,12 @@ void repl (object *env) {
     }
     if (line == (object *)KET) error2("unmatched right bracket");
     protect(line);
-    pfl(pserial);
+
+    if (tstuserflag(SERIAL_CONSOLE)) {
+      // For console via serial port, ensure newline at the start
+      pfl(pserial);
+    }
+
     line = eval(line, env);
     pfl(pserial);
     printobject(line, pserial);

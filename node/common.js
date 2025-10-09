@@ -26,7 +26,7 @@ export async function lispCreator({
       args.reduce((result, arg) => {
         result += arg // Assume string
         return result
-      }, '')
+      }, '') + '\n' // Each call to print ends with new line
     )
   }
 
@@ -64,7 +64,6 @@ export async function lispCreator({
     // Return value: Number, string - TODO: Function, ..
 
     const value = printBuffer.end()
-
     if (value === 'nil') return null
     if (value === 't') return true
 
