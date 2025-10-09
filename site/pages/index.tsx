@@ -74,13 +74,13 @@ export default function Page() {
           },
           print(arg) {
             const prev = consoleOutRef.current
-            consoleOutRef.current = prev + arg.replace("\r", "\n")
+            consoleOutRef.current = prev + arg
             setConsoleOut(consoleOutRef.current)
           },
           printError(arg) {
             // TODO: Style error differently
             const prev = consoleOutRef.current
-            consoleOutRef.current = prev + arg.replace("\r", "\n")
+            consoleOutRef.current = prev + arg
             setConsoleOut(consoleOutRef.current)
           },
           readLine() {
@@ -102,7 +102,7 @@ export default function Page() {
               return
             }
             const prev = consoleOutRef.current
-            consoleOutRef.current = prev + String.fromCharCode(byte).replace("\r", "\n")
+            consoleOutRef.current = prev + String.fromCharCode(byte)
             setConsoleOut(consoleOutRef.current)
           }
         })
