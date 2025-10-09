@@ -285,6 +285,10 @@ export default function Page() {
                   if (inputResolverRef.current) {
                     inputResolverRef.current(inputValue + '\n')
                     inputResolverRef.current = null
+
+                    // Echo input value to console
+                    consoleOutRef.current += inputValue + '\n'
+                    setConsoleOut(consoleOutRef.current)
                   }
                   setInputPrompt(false)
                   setInputValue('')
