@@ -272,7 +272,9 @@ export default function Page() {
           </div>
 
           <pre className="font-mono py-2 px-4">
-            <code className="text-wrap">{consoleOut}</code>
+            <code className="text-wrap block min-h-38">{
+              consoleOut
+            }</code>
           </pre>
 
           {inputPrompt && (
