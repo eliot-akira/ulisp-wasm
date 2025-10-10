@@ -22,10 +22,13 @@ const exampleCode = `(defun fib (n)
 //    (delay 1000)))
 // (b)`
 
+// Modes supported by Parinfer, and 'off' for internal use
+type ExtendedParenModes = 'smart' | 'paren' | 'indent' | 'off'
+
 export default function Page() {
   const [consoleOut, setConsoleOut] = useState('')
   const [currentStep, setStep] = useState(0)
-  const [parinferMode, setParinferMode] = useState<'smart' | 'paren' | 'indent' | 'off'>('off')
+  const [parinferMode, setParinferMode] = useState<ExtendedParenModes>('off')
   const [inputPrompt, setInputPrompt] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
@@ -173,7 +176,7 @@ export default function Page() {
                 id="parinfer-mode"
                 value={parinferMode}
                 onChange={(e) => {
-                  const newMode = e.target.value as 'smart' | 'paren' | 'indent' | 'off'
+                  const newMode = e.target.value as ExtendedParenModes
                   setParinferMode(newMode)
                   if (editorViewRef.current) {
                     if (newMode === 'off') {
