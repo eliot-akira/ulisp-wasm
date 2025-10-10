@@ -40,9 +40,12 @@ test('create', async () => {
   // is(123, await run(`(let ((cat 123)) cat)`))
 })
 
-test('interface', async () => {
-  ok(true, 'ok')
+test('newlines', async () => {
+
+  // TODO: Test output modes with different handling of `\r` and `\n`
+
+  code = `(format t "test123~%")`
+  is('test123\nnil', await run(code), code)
 })
 
-// Standalone `bun tests/interface.ts` or part of suite
 runTests()

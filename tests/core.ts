@@ -855,5 +855,4 @@ test('error checks', async () => {
   is(nothing, await run(`(ignore-errors (let ((s "hello")) (setf (char s 20) #\\x) s))`), 'setf')
 })
 
-// Standalone `bun tests/core.ts` or part of suite
 runTests()
