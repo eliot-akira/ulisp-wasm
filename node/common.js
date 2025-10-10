@@ -20,13 +20,17 @@ export async function lispCreator({
 }) {
   const printBuffer = new PrintBuffer()
 
+  /**
+   * By default, each call to print ends with newline, same as Emscripten's print
+   * that it overrides. For user-provided callback, the raw value is passed.
+   */
   function print(...args) {
     if (userPrint) return userPrint(...args)
     printBuffer.push(
       args.reduce((result, arg) => {
         result += arg // Assume string
         return result
-      }, '') + '\n' // Each call to print ends with new line
+      }, '') + '\n'
     )
   }
 

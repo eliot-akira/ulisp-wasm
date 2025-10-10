@@ -33,11 +33,11 @@ export default function Page() {
   const [shareLinkText, setShareLinkText] = useState(shareLinkTextDefault)
 
   const editorRef = useRef(null)
-  const evalRef = useRef(null)
+  const evalRef = useRef<Function>(null)
   const editorViewRef = useRef<EditorView>(null)
-  const inputResolverRef = useRef(null)
+  const inputResolverRef = useRef<Function>(null)
 
-  const consoleOutRef = useRef()
+  const consoleOutRef = useRef('')
   consoleOutRef.current = consoleOut
 
   useEffect(() => {
@@ -73,14 +73,12 @@ export default function Page() {
             setStep(n)
           },
           print(arg) {
-            const prev = consoleOutRef.current
-            consoleOutRef.current = prev + arg
+            consoleOutRef.current += arg + '\n'
             setConsoleOut(consoleOutRef.current)
           },
           printError(arg) {
             // TODO: Style error differently
-            const prev = consoleOutRef.current
-            consoleOutRef.current = prev + arg
+            consoleOutRef.current += arg + '\n'
             setConsoleOut(consoleOutRef.current)
           },
           readLine() {
