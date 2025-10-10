@@ -35,7 +35,13 @@ import { light } from './theme-default/light.ts'
 // import { javascript } from '@codemirror/lang-javascript'
 import { clojure } from './lang-ulisp' // '@nextjournal/lang-clojure'
 
-import { parinferExtension, switchMode, disableParinfer, enableParinfer } from './cm6-parinfer.ts'
+import {
+  parinferExtension,
+  switchMode,
+  disableParinfer,
+  enableParinfer,
+  type ParinferExtensionConfig
+} from '../parinfer/cm6-parinfer.ts'
 
 function createEditorState(initialContents, options = {}) {
   const state = EditorState.create({
@@ -79,8 +85,8 @@ function createEditorState(initialContents, options = {}) {
       clojure(),
       parinferExtension({
         enabled: false,
-        mode: 'smart' // smart, parent, indent, off
-      }),
+        mode: 'smart' // smart, paren, indent
+      } as ParinferExtensionConfig),
       themeBase,
       light,
       ...(options.extensions || [])
