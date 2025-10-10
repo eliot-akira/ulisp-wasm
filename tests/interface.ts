@@ -42,10 +42,44 @@ test('create', async () => {
 
 test('newlines', async () => {
 
-  // TODO: Test output modes with different handling of `\r` and `\n`
+  // These test cases also check that no unnecessary newline at the start of output.
 
-  code = `(format t "test123~%")`
-  is('test123\nnil', await run(code), code)
+  // Currently any return value can be parsed as JSON with no newline appended; or
+  // invalid JSON is returned as is. Is that the expected/desired behavior?
+
+  // TODO: After dynamic switching of output mode is supported, test the
+  // different handling of `\r` and `\n`
+
+  for (let i = 0; i < 5; i++) {
+    code = `(format t "test123~%")`
+    is('test123\nnil', await run(code), `${i + 1}. ${code}`)
+  }
+
+  // print outputs the value `1`, a space following it (` `), and a newline (`\n`);
+  // then returns the value.
+  code = `(print 1)`
+  is('1 \n1', await run(code), code)
+  code = `(print "1")`
+  is('"1" \n"1"', await run(code), code)
+
+  code = `(print nothing)`
+  is('', await run(code), code)
+
+  // pprint outputs the value `1` and a newline (`\n`), then returns nothing
+  code = `(pprint 1)`
+  is(1, await run(code), code)
+  code = `(pprint "1")`
+  is('1', await run(code), code)
+
+  code = `(pprint "hello")`
+  is('hello', await run(code), code)
+
+  code = `(prin1-to-string "hello")`
+  is('"hello"', await run(`(prin1-to-string "hello")`), code)
+
+  // The variable `nothing` is pretty printed as its name
+  code = `(pprint nothing)`
+  is('nothing', await run(code), code)
 })
 
 runTests()

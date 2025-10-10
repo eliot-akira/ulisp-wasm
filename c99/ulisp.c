@@ -292,9 +292,9 @@ typedef uint16_t userflags_t;
 volatile userflags_t UserFlags = 0;
 
 // Like set/clr/tstflag but dynamic at runtime
-void setuserflag(enum userflag x) { UserFlags = UserFlags | 1<<(x); }
-void clruserflag(enum userflag x) { UserFlags = UserFlags & ~(1<<(x)); }
-bool tstuserflag(enum userflag x) { return UserFlags & 1<<(x); }
+void setuserflag (enum userflag x) { UserFlags = UserFlags | 1<<(x); }
+void clruserflag (enum userflag x) { UserFlags = UserFlags & ~(1<<(x)); }
+bool tstuserflag (enum userflag x) { return UserFlags & 1<<(x); }
 
 // Forward references
 object *tee;
@@ -5362,7 +5362,8 @@ object *fn_print (object *args, object *env) {
   (void) env;
   object *obj = first(args);
   pfun_t pfun = pstreamfun(cdr(args));
-  pln(pfun);
+  if (tstuserflag(SERIAL_CONSOLE)) pln(pfun);
+  else pfl(pfun); // Prepend newline only as needed
   printobject(obj, pfun);
   pfun(' ');
   return obj;
@@ -5802,7 +5803,8 @@ object *fn_pprint (object *args, object *env) {
   #if defined(gfxsupport)
   if (pfun == gfxwrite) ppwidth = GFXPPWIDTH;
   #endif
-  pln(pfun);
+  if (tstuserflag(SERIAL_CONSOLE)) pln(pfun);
+  else pfl(pfun); // Prepend newline only as needed
   superprint(obj, 0, pfun);
   ppwidth = PPWIDTH;
   return bsymbol(NOTHING);
@@ -8772,19 +8774,22 @@ void repl (object *env) {
       }
     }
     if (line == (object *)KET) error2("unmatched right bracket");
+
+    // For browser and terminal consoles, avoid printing unnecessary newlines
+    // For serial console, keep the same logic from original ESP version
+
     protect(line);
 
-    if (tstuserflag(SERIAL_CONSOLE)) {
-      // For console via serial port, ensure newline at the start
-      pfl(pserial);
-    }
+    if (!tstuserflag(SERIAL_CONSOLE)) LastPrint = '\n';
+    pfl(pserial);
 
     line = eval(line, env);
-    pfl(pserial);
-    printobject(line, pserial);
+    pfl(pserial); // In case eval already output something
+    printobject(line, pserial); // Print result
+
     unprotect();
-    pfl(pserial);
-    // pln(pserial);
+    pfl(pserial); // Necessary to flush output
+    if (tstuserflag(SERIAL_CONSOLE)) pln(pserial);
   }
 }
 
