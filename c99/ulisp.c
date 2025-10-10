@@ -8449,6 +8449,14 @@ int gserial_interactive () {
       interactive_input_buf = NULL;
     }
 
+    // Flush output before requesting input to ensure any buffered output is displayed
+    // Emscripten only flushes stdout on newlines, so we force it by writing a newline
+    // if the last character wasn't already a newline
+    if (LastPrint != '\n' && LastPrint != 0) {
+      putchar('\n');
+      fflush(stdout);
+    }
+
     // Request input from the host
     interactive_input_buf = read_line_from_host();
     interactive_input_pos = 0;
