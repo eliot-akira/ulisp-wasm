@@ -57,7 +57,9 @@ Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp E
 Prerequisites:
 
 - [Docker](https://docs.docker.com/engine/) to run Emscripten in a container; or directly use `emcc` from [Emscripten SDK](https://github.com/emscripten-core/emsdk) ([install options](https://emscripten.org/docs/getting_started/downloads.html))
-- [Bun](https://bun.sh/)
+- [Bun](https://bun.sh/) - JS runtime and build tool
+- [Clang](https://clang.llvm.org/) - Optional: Compile to local platform
+- [Zig](https://ziglang.org/) - Optional: Cross-compile to all supported platforms
 
 See `package.json` for available CLI commands.
 
