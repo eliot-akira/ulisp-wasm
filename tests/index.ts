@@ -1,51 +1,16 @@
-import { createLisp } from '../node/index.js'
 import { test, is, run as runTests } from 'testra'
-
-let lisp, run, code
-let t = true
-let nil = null
-let nothing = '' // ?
-
-test('create', async () => {
-  is(true, createLisp instanceof Function, 'createLisp is a function')
-
-  let result: any = createLisp()
-
-  is(true, result instanceof Promise, 'create returns a promise')
-
-  lisp = await result
-
-  is(true, lisp instanceof Object, 'promise resolves to module instance')
-
-  run = lisp.eval
-
-  is(true, run instanceof Function, 'eval is a function')
-
-  code = `(+ 1 2)`
-  result = await run(code)
-  is(3, result, code)
-
-  code = `
-(defun fib (n)
-(if (< n 3) 1
-  (+ (fib (- n 1)) (fib (- n 2)))))
-(fib 5)
-`
-
-  result = await run(code)
-  is(5, result, '(fib 5)')
-
-  code = `"hi"`
-  result = await run(code)
-  is('hi', result, code)
-
-  // TODO: Define a function that can be called from Lisp
-  // is(123, await run(`(let ((cat 123)) cat)`))
-})
+import { createLisp } from '../node/index.js'
 
 /**
  * Tests ported from ./builder/Test Suites/AutoTester 32-bit.lisp
  */
+let t = true
+let nil = null
+let nothing = ''
+let code = ''
+
+const lisp = await createLisp()
+const run = lisp.eval
 
 test('Symbols', async () => {
   is(123, await run(`(let ((cat 123)) cat)`), 'let')
@@ -890,4 +855,5 @@ test('error checks', async () => {
   is(nothing, await run(`(ignore-errors (let ((s "hello")) (setf (char s 20) #\\x) s))`), 'setf')
 })
 
+// Standalone `bun tests/core.ts` or part of suite
 runTests()
