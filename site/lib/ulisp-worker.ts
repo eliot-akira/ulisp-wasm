@@ -18,6 +18,9 @@ async function handleMessage(e) {
 
   if (action) {
     console.log('Action', action)
+
+    // TODO: Set user flag to switch output mode, etc.
+
     return
   }
 
