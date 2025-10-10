@@ -3,7 +3,8 @@ import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { lispCreator } from './common.js'
 
-export async function createLisp() {
+export async function createLisp(options = {}) {
+
   const __dirname = dirname(fileURLToPath(import.meta.url))
   // Emscripten output expects this global
   globalThis.__dirname = __dirname
@@ -35,7 +36,6 @@ export async function createLisp() {
     },
     async delay(duration = 0) {
       return new Promise((resolve, reject) => {
-        console.log('delay', duration)
         setTimeout(resolve, parseInt(duration, 10))
       })
     },
@@ -49,6 +49,7 @@ export async function createLisp() {
   })
 
   return await lispCreator({
-    createLispWasmModule
+    createLispWasmModule,
+    ...options
   })
 }

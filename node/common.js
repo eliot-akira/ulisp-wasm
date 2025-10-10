@@ -16,19 +16,37 @@ export class PrintBuffer {
 export async function lispCreator({
   createLispWasmModule, // Browser or Node
   print: userPrint,
-  printError
+  printError,
+  /**
+   * Parse return value as JSON
+   */
+  parseJson = true,
+  /**
+   * On invalid JSON: return value (default), error, or none
+   */
+  jsonErrorMode = 'value'
 }) {
   const printBuffer = new PrintBuffer()
 
+  /**
+   * By default, each call to print ends with newline, same as Emscripten's print
+   * that it overrides. For user-provided callback, the raw value is passed.
+   */
   function print(...args) {
     if (userPrint) return userPrint(...args)
     printBuffer.push(
       args.reduce((result, arg) => {
         result += arg // Assume string
         return result
-      }, '')
+      }, '') + '\n'
     )
   }
+
+  // Shortcut to avoid comparing strings on every eval
+  const jsonError = ['value', 'error', 'none'].reduce((obj, key) => {
+    obj[key] = jsonErrorMode === key
+    return obj
+  }, {})
 
   const Module = await createLispWasmModule({
     print,
@@ -37,7 +55,7 @@ export async function lispCreator({
 
   Module._setup()
 
-  async function evaluate(code) {
+  async function evaluate(code, evalOptions = {}) {
     printBuffer.start()
 
     // Allocate memory for string
@@ -61,9 +79,14 @@ export async function lispCreator({
     // Free it after use
     Module._free(ptr)
 
-    // Return value: Number, string - TODO: Function, ..
+    // JSON decode value
 
     const value = printBuffer.end()
+
+    // Raw value
+    if (!parseJson) {
+      return value
+    }
 
     if (value === 'nil') return null
     if (value === 't') return true
@@ -71,7 +94,14 @@ export async function lispCreator({
     try {
       return JSON.parse(value)
     } catch (e) {
-      return value
+      if (jsonError.none) return
+      if (jsonError.error) {
+        e.originalValue = value
+        return e
+      }
+      if (jsonError.value) {
+        return value
+      }
     }
   }
 

@@ -1,8 +1,8 @@
 // Does not (yet) support:
 // - styling parentrails
 
-import type { Parinfer, ParinferChange, ParinferOptions, ParinferResult, ParinferError } from "../parinfer/parinfer.d.ts"
-import parinfer from "../parinfer/parinfer.ts"
+import type { Parinfer, ParinferChange, ParinferOptions, ParinferResult, ParinferError } from "./parinfer.ts"
+import parinfer from "./parinfer.ts"
 const parinferLib = parinfer as Parinfer
 import type { ChangeSet, ChangeSpec, Extension, StateEffectType, Text, Transaction, TransactionSpec } from "@codemirror/state"
 import { EditorSelection, EditorState, StateEffect, StateField } from "@codemirror/state"
@@ -147,7 +147,7 @@ function applyParinferSmartWithDiff(transaction: Transaction): TransactionSpec |
                                   cursorX: newX,
                                   cursorLine: newY,
                                   changes: parinferChanges,
-                                  selectionStartLine
+                                  selectionStartLine: selectionStartLine
                                 })
   if (!result.success) {
     const effect = maybeErrorEffect(startState, result.error!)
@@ -165,30 +165,43 @@ function applyParinferSmartWithDiff(transaction: Transaction): TransactionSpec |
   }
 }
 
-function maybeInitialize(transaction: Transaction, initialConfig: ParinferExtensionConfig): TransactionSpec | readonly TransactionSpec[] {
-  if (!(transaction.startState.field(configField, false))) {
+function maybeInitialize(tr: Transaction, initialConfig?: ParinferExtensionConfig): TransactionSpec | readonly TransactionSpec[] {
+  if (!(tr.startState.field(configField, false))) {
     return [
-      transaction,
-      {effects: setConfigEffect.of({ ...defaultConfig, ...initialConfig})}
+      tr,
+      {effects: setConfigEffect.of({...defaultConfig, ...initialConfig})}
     ]
   }
-  return transaction
+  return tr
+}
+
+function effectivelyEnabled(tr: Transaction): boolean {
+  const aSetConfigEffect = filterTransactionEffects(setConfigEffect, tr).at(-1)
+  return (enabled(tr.startState) ||
+         (aSetConfigEffect && aSetConfigEffect.value.enabled)) as boolean
+}
+
+function needToApplyParinfer(tr: Transaction): boolean {
+  return effectivelyEnabled(tr) &&
+         (tr.docChanged || tr.isUserEvent("select"))
 }
 
 function parinferTransactionFilter(initialConfig?: ParinferExtensionConfig) {
   return EditorState.transactionFilter.of(tr => {
-    const aSetConfigEffect = filterTransactionEffects(setConfigEffect, tr).at(-1)
-    if ((enabled(tr.startState) && tr.docChanged) ||
-        (aSetConfigEffect && aSetConfigEffect.value.enabled)) {
+    if (needToApplyParinfer(tr)) {
       const parinferChanges = applyParinferSmartWithDiff(tr)
       if (parinferChanges) {
-        if (parinferChanges.effects || parinferChanges.changes) {
+        if (parinferChanges.effects ||
+            (parinferChanges.changes &&
+             (!Array.isArray(parinferChanges.changes) ||
+              parinferChanges.changes.length > 0))) {
           return [tr, parinferChanges]
         }
       }
     }
-    return tr
-})}
+    return maybeInitialize(tr, initialConfig)
+  })
+}
 
 function errorToDiagnostics(doc: Text, error: ParinferError): Diagnostic[] {
   const { x, lineNo, extra, message } = error
@@ -214,9 +227,9 @@ function otherDiagnostics(state: EditorState): Diagnostic[] {
 }
 
 function hasEffectOfType(effectType: StateEffectType<any>, update: ViewUpdate): boolean {
- return update.transactions.some(tr => {
-   return tr.effects.some(e => e.is(effectType))
- })
+  return update.transactions.some(tr => {
+    return tr.effects.some(e => e.is(effectType))
+  })
 }
 
 function parinferViewUpdateListener() {
@@ -226,7 +239,7 @@ function parinferViewUpdateListener() {
       const parinferError = state.field(parinferErrorField, false)
       const parinferDiagnostics: Diagnostic[] =
         (enabled(state) && parinferError) ? errorToDiagnostics(state.doc, parinferError)
-                                           : []
+                                          : []
       const diagnosticTr = setDiagnostics(state,
                                           [...parinferDiagnostics,
                                            ...otherDiagnostics(state)])

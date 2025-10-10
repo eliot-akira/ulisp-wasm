@@ -22,10 +22,13 @@ const exampleCode = `(defun fib (n)
 //    (delay 1000)))
 // (b)`
 
+// Modes supported by Parinfer, and 'off' for internal use
+type ExtendedParenModes = 'smart' | 'paren' | 'indent' | 'off'
+
 export default function Page() {
-  const [consoleOut, setConsoleOut] = useState(' ')
+  const [consoleOut, setConsoleOut] = useState('')
   const [currentStep, setStep] = useState(0)
-  const [parinferMode, setParinferMode] = useState<'smart' | 'paren' | 'indent' | 'off'>('smart')
+  const [parinferMode, setParinferMode] = useState<ExtendedParenModes>('off')
   const [inputPrompt, setInputPrompt] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
@@ -33,11 +36,11 @@ export default function Page() {
   const [shareLinkText, setShareLinkText] = useState(shareLinkTextDefault)
 
   const editorRef = useRef(null)
-  const evalRef = useRef(null)
+  const evalRef = useRef<Function>(null)
   const editorViewRef = useRef<EditorView>(null)
-  const inputResolverRef = useRef(null)
+  const inputResolverRef = useRef<Function>(null)
 
-  const consoleOutRef = useRef()
+  const consoleOutRef = useRef('')
   consoleOutRef.current = consoleOut
 
   useEffect(() => {
@@ -49,7 +52,8 @@ export default function Page() {
       const code = editorViewRef.current.state.doc.toString()
       try {
         // setConsoleOut('..Evaluating')
-        setConsoleOut(' ')
+        consoleOutRef.current = ''
+        setConsoleOut(consoleOutRef.current)
 
         const result = await lisp.eval(code)
 
@@ -72,13 +76,13 @@ export default function Page() {
             setStep(n)
           },
           print(arg) {
-            const prev = consoleOutRef.current.trim()
-            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+            consoleOutRef.current += arg + '\n'
+            setConsoleOut(consoleOutRef.current)
           },
           printError(arg) {
             // TODO: Style error differently
-            const prev = consoleOutRef.current.trim()
-            setConsoleOut((prev ? prev + '\n' : prev) + arg + '\n')
+            consoleOutRef.current += arg + '\n'
+            setConsoleOut(consoleOutRef.current)
           },
           readLine() {
             return new Promise((resolve) => {
@@ -98,8 +102,9 @@ export default function Page() {
               console.warn('Invalid byte range')
               return
             }
-            const prev = consoleOutRef.current.trim()
-            setConsoleOut(prev + String.fromCharCode(byte))
+            const prev = consoleOutRef.current
+            consoleOutRef.current = prev + String.fromCharCode(byte)
+            setConsoleOut(consoleOutRef.current)
           }
         })
         lisp.stop = async () => {
@@ -166,12 +171,12 @@ export default function Page() {
           <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
             <h4 className="flex-grow">Editor</h4>
             <div className="text-xs text-slate-800 flex items-center gap-2">
-              <label htmlFor="parinfer-mode">Infer parentheses:</label>
+              <label htmlFor="parinfer-mode">Edit mode</label>
               <select
                 id="parinfer-mode"
                 value={parinferMode}
                 onChange={(e) => {
-                  const newMode = e.target.value as 'smart' | 'paren' | 'indent' | 'off'
+                  const newMode = e.target.value as ExtendedParenModes
                   setParinferMode(newMode)
                   if (editorViewRef.current) {
                     if (newMode === 'off') {
@@ -268,7 +273,7 @@ export default function Page() {
           </div>
 
           <pre className="font-mono py-2 px-4">
-            <code className="text-wrap">{consoleOut}</code>
+            <code className="text-wrap block min-h-38">{consoleOut}</code>
           </pre>
 
           {inputPrompt && (
@@ -279,6 +284,10 @@ export default function Page() {
                   if (inputResolverRef.current) {
                     inputResolverRef.current(inputValue + '\n')
                     inputResolverRef.current = null
+
+                    // Echo input value to console
+                    consoleOutRef.current += inputValue + '\n'
+                    setConsoleOut(consoleOutRef.current)
                   }
                   setInputPrompt(false)
                   setInputValue('')
