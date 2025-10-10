@@ -44,9 +44,6 @@ test('newlines', async () => {
 
   // These test cases also check that no unnecessary newline at the start of output.
 
-  // Currently any return value can be parsed as JSON with no newline appended; or
-  // invalid JSON is returned as is. Is that the expected/desired behavior?
-
   // TODO: After dynamic switching of output mode is supported, test the
   // different handling of `\r` and `\n`
 
