@@ -1684,13 +1684,13 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
 }
 var ASM_CONSTS = {
-  54768: () => { return performance.now(); },  
- 54798: ($0) => { return performance.now() - $0; },  
- 54833: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 54889: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 54942: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
- 54998: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
- 55051: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
+  54832: () => { return performance.now(); },  
+ 54862: ($0) => { return performance.now() - $0; },  
+ 54897: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 54953: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55006: ($0, $1) => { return globalThis.ulisp.call(UTF8ToString($0), $1); },  
+ 55062: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); },  
+ 55115: ($0, $1, $2) => { globalThis.ulisp.call(UTF8ToString($0), $1, $2); }
 };
 function __asyncjs__delay_on_host(millisecs) { return Asyncify.handleAsync(async () => { await globalThis.ulisp.delay( millisecs ); }); }
 function __asyncjs__read_line_from_host() { return Asyncify.handleAsync(async () => { const input = await globalThis.ulisp.readLine(); const len = lengthBytesUTF8(input) + 1; const ptr = _malloc(len); stringToUTF8(input, ptr, len); return ptr; }); }
@@ -1738,11 +1738,11 @@ var wasmImports = {
 var wasmExports = await createWasm();
 var ___wasm_call_ctors = createExportWrapper('__wasm_call_ctors', 0);
 var _free = Module['_free'] = createExportWrapper('free', 1);
+var _fflush = createExportWrapper('fflush', 1);
 var _print_version = Module['_print_version'] = createExportWrapper('print_version', 0);
 var _setup = Module['_setup'] = createExportWrapper('setup', 0);
 var _stop_loop = Module['_stop_loop'] = createExportWrapper('stop_loop', 0);
 var _evaluate = Module['_evaluate'] = createExportWrapper('evaluate', 1);
-var _fflush = createExportWrapper('fflush', 1);
 var _strerror = createExportWrapper('strerror', 1);
 var _malloc = createExportWrapper('malloc', 1);
 var _setThrew = createExportWrapper('setThrew', 2);
