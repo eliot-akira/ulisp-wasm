@@ -31,6 +31,7 @@ export default function Page() {
   const [parinferMode, setParinferMode] = useState<ExtendedParenModes>('off')
   const [inputPrompt, setInputPrompt] = useState(false)
   const [inputValue, setInputValue] = useState('')
+  const [playerState, setPlayerState] = useState('stopped')
 
   const shareLinkTextDefault = 'Create share link'
   const [shareLinkText, setShareLinkText] = useState(shareLinkTextDefault)
@@ -39,6 +40,12 @@ export default function Page() {
   const evalRef = useRef<Function>(null)
   const editorViewRef = useRef<EditorView>(null)
   const inputResolverRef = useRef<Function>(null)
+
+  // These refs needed to get freshest state in event callbacks..
+  // TODO: Consolidate UI state with better pattern
+
+  const playerStateRef = useRef<string>(null)
+  playerStateRef.current = playerState
 
   const consoleOutRef = useRef('')
   consoleOutRef.current = consoleOut
@@ -56,13 +63,10 @@ export default function Page() {
         setConsoleOut(consoleOutRef.current)
 
         const result = await lisp.eval(code)
+        // Result already handled by print() below
+        // setConsoleOut(result)
 
-        // Already handled by print() below
-        // setConsoleOut(
-        //   result == null
-        //     ? ' ' // Prevent console output from collapsing - TODO: Do it with CSS
-        //     : result
-        // )
+        // TODO: Let programs return values or functions to host?
       } catch (e) {
         console.log('eval error', e)
       }
@@ -102,8 +106,7 @@ export default function Page() {
               console.warn('Invalid byte range')
               return
             }
-            const prev = consoleOutRef.current
-            consoleOutRef.current = prev + String.fromCharCode(byte)
+            consoleOutRef.current += String.fromCharCode(byte)
             setConsoleOut(consoleOutRef.current)
           }
         })
@@ -146,13 +149,13 @@ export default function Page() {
 
         // if (shouldRunAutomatically)
         evaluate() // Run example code
+        setPlayerState('running')
       }
     })().catch(console.error)
 
     return () => {
       // Clean up
       editorViewRef.current && editorViewRef.current.destroy()
-
       // if (lisp) {
       //   lisp.stop()
       // }
@@ -161,8 +164,8 @@ export default function Page() {
   }, [editorRef, evalRef, editorViewRef])
 
   return (
-    <div className="md:flex h-screen w-screen">
-      <div className="ui-panel md:w-1/2 md:pr-2 p-4">
+    <div className="flex flex-col md:flex-row h-screen w-screen">
+      <div className="ui-panel md:w-1/2 md:pr-2 p-4 h-1/2 md:h-dvh overflow-y-auto">
         <div className="h-10">
           <h1 className="font-semibold">uLisp-Wasm Playground</h1>
         </div>
@@ -202,13 +205,14 @@ export default function Page() {
         <div className="text-sm text-slate-700">Shortcut to run: CTRL or CMD + Enter</div>
       </div>
 
-      <div className="ui-panel md:w-1/2 md:pl-2 p-4">
+      <div className="ui-panel md:w-1/2 md:pl-2 p-4 h-0.5dvh md:h-1dvh overflow-y-auto">
         <div className="ui-toolbar h-10 text-right">
           <button
             className="mx-2 py-1 px-2
             bg-blue-100 shadow-sm active:shadow-none
             rounded cursor-pointer"
             onClick={() => {
+              setPlayerState('running')
               evalRef.current && evalRef.current()
             }}
           >
@@ -220,12 +224,21 @@ export default function Page() {
             bg-red-100 shadow-sm active:shadow-none
             rounded cursor-pointer"
             onClick={() => {
-              // setConsoleOut(' ')
-              // setStep(0)
-              lisp && lisp.stop()
+              if (!lisp) return
+              if (playerStateRef.current !== 'stopped') {
+                // running or cleared
+                setPlayerState('stopped')
+                lisp.stop()
+              } else {
+                setPlayerState('cleared')
+                setConsoleOut('')
+                setStep(0)
+                // Clear URL hash
+                window.location.hash = ''
+              }
             }}
           >
-            Stop
+            {playerStateRef.current === 'running' || playerStateRef.current === 'cleared' ? 'Stop' : 'Clear'}
           </button>
 
           <button
@@ -238,7 +251,7 @@ export default function Page() {
               const code = editorViewRef.current.state.doc.toString()
               const hash = await base64Url.encode({
                 code
-                // TODO: title?
+                // TODO: title
               })
 
               // console.log('URL', hash)
