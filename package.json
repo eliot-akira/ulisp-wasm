@@ -13,7 +13,7 @@
     "clean": "rm -rf build",
     "clean:site": "rm -rf build/server; rm -rf docs",
     "build": "bun build:site",
-    "build:all": "bun build:web && bun build:site && bun build:node",
+    "build:all": "bun build:node && bun build:web && bun build:site",
     "build:bun": "bun build.ts build:bun",
     "build:cli": "bun build.ts build:cli",
     "build:node": "bun run build.ts build:node",
