@@ -171,7 +171,7 @@ export default function Page() {
     <div className="flex flex-col h-screen w-screen">
       <div className="flex flex-row items-center w-full py-2 px-4 border-b border-slate-300 bg-slate-100">
         <h1 className="md:w-1/2 font-semibold">
-          <img className="h-6 inline-block mr-2" src="/favicon-32x32.png" alt="logo" />
+          <img className="h-6 inline-block mr-2" src="favicon-32x32.png" alt="logo" />
           uLisp-Wasm Playground
         </h1>
         <div className="ui-toolbar md:w-1/2 text-right">
