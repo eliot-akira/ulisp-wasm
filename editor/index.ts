@@ -35,6 +35,8 @@ import { light } from './theme-default/light.ts'
 // import { javascript } from '@codemirror/lang-javascript'
 import { clojure } from './lang-ulisp' // '@nextjournal/lang-clojure'
 
+import { rainbowBracketsPlugin, rainbowBracketsTheme } from './rainbow-brackets'
+
 import {
   parinferExtension,
   switchMode,
@@ -89,6 +91,10 @@ function createEditorState(initialContents, options = {}) {
       } as ParinferExtensionConfig),
       themeBase,
       light,
+
+      // TODO: Optionally enable via UI
+      // rainbowBracketsPlugin,
+      // rainbowBracketsTheme,
       ...(options.extensions || [])
     ]
   })
