@@ -4,6 +4,10 @@ import * as base64Url from 'base64-compressor'
 import { createLisp } from '../lib/create-lisp'
 import { EditorView } from '@codemirror/view'
 
+function removeUrlHash() {
+  window.history.replaceState({}, document.title, window.location.pathname)
+}
+
 let lisp
 
 const exampleCode = `(defun fib (n)
@@ -164,49 +168,13 @@ export default function Page() {
   }, [editorRef, evalRef, editorViewRef])
 
   return (
-    <div className="flex flex-col md:flex-row h-screen w-screen">
-      <div className="ui-panel md:w-1/2 md:pr-2 p-4 h-1/2 md:h-dvh overflow-y-auto">
-        <div className="h-10">
-          <h1 className="font-semibold">uLisp-Wasm Playground</h1>
-        </div>
-
-        <section className="my-4 border border-slate-300">
-          <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
-            <h4 className="flex-grow">Editor</h4>
-            <div className="text-xs text-slate-800 flex items-center gap-2">
-              <label htmlFor="parinfer-mode">Edit mode</label>
-              <select
-                id="parinfer-mode"
-                value={parinferMode}
-                onChange={(e) => {
-                  const newMode = e.target.value as ExtendedParenModes
-                  setParinferMode(newMode)
-                  if (editorViewRef.current) {
-                    if (newMode === 'off') {
-                      editor.setParinferEnabled(editorViewRef.current, false)
-                    } else {
-                      editor.setParinferEnabled(editorViewRef.current, true)
-                      editor.switchParinferMode(editorViewRef.current, newMode)
-                    }
-                  }
-                }}
-                className="border border-slate-300 rounded px-1 py-0.5 text-xs"
-              >
-                <option value="smart">Smart</option>
-                <option value="paren">Paren</option>
-                <option value="indent">Indent</option>
-                <option value="off">Off</option>
-              </select>
-            </div>
-          </div>
-          <div className="my-1 mx-1" ref={editorRef}></div>
-        </section>
-
-        <div className="text-sm text-slate-700">Shortcut to run: CTRL or CMD + Enter</div>
-      </div>
-
-      <div className="ui-panel md:w-1/2 md:pl-2 p-4 h-0.5dvh md:h-1dvh overflow-y-auto">
-        <div className="ui-toolbar h-10 text-right">
+    <div className="flex flex-col h-screen w-screen">
+      <div className="flex flex-row items-center w-full py-2 px-4 border-b border-slate-300 bg-slate-100">
+        <h1 className="md:w-1/2 font-semibold">
+          <img className='h-6 inline-block mr-2' src="/favicon-32x32.png" alt="logo" />
+          uLisp-Wasm Playground
+        </h1>
+        <div className="ui-toolbar md:w-1/2 text-right">
           <button
             className="mx-2 py-1 px-2
             bg-blue-100 shadow-sm active:shadow-none
@@ -234,7 +202,8 @@ export default function Page() {
                 setConsoleOut('')
                 setStep(0)
                 // Clear URL hash
-                window.location.hash = ''
+                // window.location.hash = ''
+                removeUrlHash()
               }
             }}
           >
@@ -242,7 +211,7 @@ export default function Page() {
           </button>
 
           <button
-            className="mx-2 py-1 px-2
+            className="ml-2 py-1 px-2
             bg-emerald-100 shadow-sm active:shadow-none
             rounded cursor-pointer"
             onClick={async () => {
@@ -278,54 +247,98 @@ export default function Page() {
             }
           </button>
         </div>
+      </div>
 
-        <section className="my-4 border border-slate-300">
-          <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
-            <h4 className="flex-grow">Console</h4>
-            <div className="text-xs text-slate-800">Step {currentStep}</div>
-          </div>
-
-          <pre className="font-mono py-2 px-4">
-            <code className="text-wrap block min-h-38">{consoleOut}</code>
-          </pre>
-
-          {inputPrompt && (
-            <div className="border-t border-slate-300 p-2 bg-yellow-50">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  if (inputResolverRef.current) {
-                    inputResolverRef.current(inputValue + '\n')
-                    inputResolverRef.current = null
-
-                    // Echo input value to console
-                    consoleOutRef.current += inputValue + '\n'
-                    setConsoleOut(consoleOutRef.current)
-                  }
-                  setInputPrompt(false)
-                  setInputValue('')
-                }}
-              >
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    autoFocus
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    className="flex-grow px-2 py-1 border border-slate-300 rounded"
-                    placeholder="Enter input..."
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 py-1 bg-blue-100 shadow-sm active:shadow-none rounded cursor-pointer"
+      <div className="flex flex-col md:flex-row flex-grow">
+        <div className="ui-panel relative md:w-1/2 overflow-hidden flex flex-col">
+          <div className="absolute w-full h-full flex-grow overflow-y-auto px-4 pb-4 md:pr-2">
+            <section className="my-4 border border-slate-300">
+              <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
+                <h4 className="flex-grow">Editor</h4>
+                <div className="text-xs text-slate-800 flex items-center gap-2">
+                  <label htmlFor="parinfer-mode">Edit mode</label>
+                  <select
+                    id="parinfer-mode"
+                    value={parinferMode}
+                    onChange={(e) => {
+                      const newMode = e.target.value as ExtendedParenModes
+                      setParinferMode(newMode)
+                      if (editorViewRef.current) {
+                        if (newMode === 'off') {
+                          editor.setParinferEnabled(editorViewRef.current, false)
+                        } else {
+                          editor.setParinferEnabled(editorViewRef.current, true)
+                          editor.switchParinferMode(editorViewRef.current, newMode)
+                        }
+                      }
+                    }}
+                    className="border border-slate-300 rounded px-1 py-0.5 text-xs"
                   >
-                    Submit
-                  </button>
+                    <option value="smart">Smart</option>
+                    <option value="paren">Paren</option>
+                    <option value="indent">Indent</option>
+                    <option value="off">Off</option>
+                  </select>
                 </div>
-              </form>
-            </div>
-          )}
-        </section>
+              </div>
+              <div className="my-1 mx-1" ref={editorRef}></div>
+            </section>
+
+            <div className="text-sm text-slate-700">Shortcut to run: CTRL or CMD + Enter</div>
+          </div>
+        </div>
+
+        <div className="ui-panel md:w-1/2 relative">
+          <div className="absolute w-full h-full flex-grow overflow-y-auto px-4 pb-4 md:pl-2">
+            <section className="mt-4 border border-slate-300">
+              <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
+                <h4 className="flex-grow">Console</h4>
+                <div className="text-xs text-slate-800">Step {currentStep}</div>
+              </div>
+
+              <pre className="font-mono py-2 px-4">
+                <code className="text-wrap block min-h-38">{consoleOut}</code>
+              </pre>
+
+              {inputPrompt && (
+                <div className="border-t border-slate-300 p-2 bg-yellow-50">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      if (inputResolverRef.current) {
+                        inputResolverRef.current(inputValue + '\n')
+                        inputResolverRef.current = null
+
+                        // Echo input value to console
+                        consoleOutRef.current += inputValue + '\n'
+                        setConsoleOut(consoleOutRef.current)
+                      }
+                      setInputPrompt(false)
+                      setInputValue('')
+                    }}
+                  >
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        className="flex-grow px-2 py-1 border border-slate-300 rounded"
+                        placeholder="Enter input..."
+                      />
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-blue-100 shadow-sm active:shadow-none rounded cursor-pointer"
+                      >
+                        Submit
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
       </div>
     </div>
   )

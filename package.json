@@ -29,7 +29,7 @@
     "test:parinfer": "bun run parinfer/tests/index.ts",
     "test:parinfer:dev": "chokidar \"parinfer/tests/**/*.ts\" --initial --silent --command 'bun parinfer/tests/index.ts'",
     "tdd": "concurrently --names wasm,test 'bun run dev:node' 'bun run test:dev'",
-    "update": "git-subrepo pull builder",
+    "subrepo": "git-subrepo",
     "format": "prettier -w site"
   },
   "dependencies": {
