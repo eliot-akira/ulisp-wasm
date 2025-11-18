@@ -52,7 +52,7 @@ const char LispLibrary[] =
 
 // Can be both Emscripten and standalone - Windows 32/64 has no terminal I/O
 #if defined(__STANDALONE__) && !defined(_WIN32)
-#include "repl/readline.h"
+#include "readline.h"
 #endif
 
 #if defined(gfxsupport)

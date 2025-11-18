@@ -122,7 +122,7 @@ switch (command) {
       // -D_DEFAULT_SOURCE to define fchmod in #include <sys/stat.h>
       // -D_XOPEN_SOURCE to define fileno in #include <stdio.h>
       try {
-        await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli -I c99 c99/ulisp.c c99/repl/readline.c`
+        await $`clang -std=c99 -lm -O3 -D_DEFAULT_SOURCE -D_XOPEN_SOURCE -D__HAS_RANDOM__=1 -o build/ulisp-cli -I c99 c99/ulisp.c c99/readline.c`
       } catch (e) {
         console.log(e.stderr.toString())
 
@@ -174,7 +174,7 @@ switch (command) {
                 // No readline for Windows
                 'c99/ulisp.c'
               ]
-            : ['c99/ulisp.c', 'c99/repl/readline.c']
+            : ['c99/ulisp.c', 'c99/readline.c']
         }`
         console.log('Build success')
         console.log(result.stdout.toString())
