@@ -150,22 +150,25 @@ switch (command) {
       // zig targets | grep aarch64-
       'aarch64-linux',
       'aarch64-macos',
+      // zig targets | grep aarch64-
+      'riscv64-linux-gnu',
+      'riscv64-linux-musl',
 
       // Windows
       'x86_64-windows',
       'aarch64-windows'
     ]) {
       console.log('Platform:', platform)
-      const [arch, os] = platform.split('-')
+      const [arch, os, libc] = platform.split('-')
       try {
         // Standardize suffix with result of "bun build" below
-        let destFile = `build/ulisp-cli-${os}-${arch === 'aarch64' ? 'arm64' : arch === 'x86_64' ? 'x64' : 'unknown'}`
+        let destFile = `build/ulisp-cli-${os}-${
+          arch === 'aarch64' ? 'arm64' : arch === 'x86_64' ? 'x64' : arch === 'riscv64' ? `${arch}-${libc}` : 'unknown'
+        }`
         console.log('Target file:', destFile)
         let result = await $`zig cc -target ${platform} -std=c99 -lm -O3 ${
-          ['x86_64-linux', 'aarch64-linux', 'x86_64-macos', 'aarch64-macos'].includes(platform)
-            ? '-D__HAS_RANDOM__'
-            : ''
-        } ${['x86_64-linux', 'aarch64-linux'].includes(platform) ? '-D_XOPEN_SOURCE' : ''} -o ${destFile} ${
+          platform.endsWith('-windows') ? '-D__NEEDS_RANDOM__' : ''
+        } ${platform.includes('-linux') ? ['-D_DEFAULT_SOURCE', '-D_XOPEN_SOURCE'] : ''} -o ${destFile} ${
           platform.endsWith('windows')
             ? [
                 // Prevent generation of PDB file for debug
@@ -213,7 +216,7 @@ switch (command) {
    */
   case 'build:zig':
     try {
-      await $`zig translate-c -D__HAS_RANDOM__=1 -lc c99/ulisp.c > zig/ulisp.zig`
+      await $`zig translate-c -lc c99/ulisp.c > zig/ulisp.zig`
     } catch (e) {
       console.log(e.stderr.toString())
     }

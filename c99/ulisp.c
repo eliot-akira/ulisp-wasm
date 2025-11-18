@@ -158,7 +158,7 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, MOSI, SCK, TFT_RST);
 #define BUILTINS           0xF4240000
 #define ENDFUNCTIONS       0x0BDC0000
 
-#if defined(__STANDALONE__) && !defined(__EMSCRIPTEN__) && !defined(__HAS_RANDOM__)
+#if defined(__NEEDS_RANDOM__)
 
 int random (int max_num) {
     int min_num = 0;
@@ -4450,7 +4450,7 @@ object *fn_abs (object *args, object *env) {
 object *fn_random (object *args, object *env) {
   (void) env;
   object *arg = first(args);
-#if defined(__STANDALONE__) && !defined(__EMSCRIPTEN__) && !defined(__HAS_RANDOM__)
+#if defined(__NEEDS_RANDOM__)
   if (integerp(arg)) return number(random(arg->integer));
 #else
   if (integerp(arg)) return number(random() % arg->integer);
