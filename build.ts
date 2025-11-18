@@ -1,6 +1,11 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { $ } from 'bun'
+import { build } from 'vite'
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 const [command, ...args] = process.argv.slice(2)
 const { uid, gid } = os.userInfo()
@@ -26,6 +31,49 @@ switch (command) {
     }
 
     break
+  case 'build:web:standalone':
+    // TODO: Bundle as worker
+    // -sWASM=0 // Single .js, no .wasm
+    // -sBUILD_AS_WORKER=1 // Build as worker
+    // -sSINGLE_FILE_BINARY_ENCODE
+
+    await $`docker compose run -u ${uid}:${gid} --remove-orphans --rm builder emcc \
+    c99/ulisp.c -I c99 -o public/ulisp-standalone.js \
+    -sASSERTIONS \
+    -O2 -fms-extensions -sENVIRONMENT=web -sEXPORT_NAME=createLispWasmModule \
+    -sASYNCIFY -sMODULARIZE -g -sWASM=0 -sBUILD_AS_WORKER=1 -sSINGLE_FILE_BINARY_ENCODE \
+    -s "EXPORTED_FUNCTIONS=[ '_setup', '_evaluate', '_free', '_print_version', '_stop_loop' ]" \
+    -s "EXPORTED_RUNTIME_METHODS=[ 'ccall', 'cwrap', 'stringToNewUTF8', 'UTF8ToString' ]"`
+
+    {
+      const file = 'web/ulisp-standalone.js'
+      await fs.rename('public/ulisp-standalone.js', file)
+      await fs.writeFile(file, patchEmscriptenOutput(await fs.readFile(file, 'utf8')))
+      console.log('Wrote', file)
+
+      await build({
+        configFile: false,
+        publicDir: false,
+        build: {
+          copyPublicDir: false,
+          emptyOutDir: false,
+          outDir: 'web',
+          rollupOptions: {
+            input: './web/ulisp-standalone.js',
+            output: {
+              entryFileNames: '[name].min.js',
+              minifyInternalExports: true
+            }
+          },
+          minify: 'esbuild' // Default
+        }
+      })
+
+      await fs.rm('./web/ulisp-standalone.js')
+    }
+
+    break
+
   /**
    * Build for JavaScript runtime - Node, Bun, Deno
    */
