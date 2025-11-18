@@ -19,8 +19,8 @@ jobs:
           version: 0.15.0
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
-      # - name: Install dependencies
-      #   run: bun install
+      - name: Install dependencies
+        run: bun install
       - name: Cross compile CLI using zig cc
         run: bun build.ts build:cli
       - name: Add latest tag as needed
