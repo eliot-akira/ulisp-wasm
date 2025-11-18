@@ -2919,7 +2919,7 @@ void doze (int secs) {
 const int PPINDENT = 2;
 const int PPWIDTH = 80;
 const int GFXPPWIDTH = 52; // 320 pixel wide screen
-int ppwidth = PPWIDTH;
+int ppwidth = 80;
 
 void pcount (char c) {
   if (c == '\n') PrintCount++;
