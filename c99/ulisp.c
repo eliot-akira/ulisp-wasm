@@ -52,7 +52,7 @@ const char LispLibrary[] =
 
 // Can be both Emscripten and standalone - Windows 32/64 has no terminal I/O
 #if defined(__STANDALONE__) && !defined(_WIN32)
-#include "readline.h"
+#include "bestline.h"
 #endif
 
 #if defined(gfxsupport)
@@ -8904,29 +8904,75 @@ int main(int argc, char *argv[]) {
 }
 #else
 
+void repl_completion(const char *buf, int pos, bestlineCompletions *lc) {
+    (void) pos;
+    if (buf[0] == 'h') {
+        bestlineAddCompletion(lc, "hello");
+        bestlineAddCompletion(lc, "hello there");
+    }
+}
+
+char *repl_hints(const char *buf, const char **ansi1, const char **ansi2) {
+    if (!strcmp(buf, "hello")) {
+        *ansi1 = "\033[35m"; /* magenta foreground */
+        *ansi2 = "\033[39m"; /* reset foreground */
+        return " World";
+    }
+    return NULL;
+}
+
 // POSIX-compatible terminal CLI and REPL with readline
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
 
-  setup();
-  linenoiseSetMultiLine(1); // Wrap to multiple rows for long line
-  linenoiseHistorySetMaxLen(1000);
+    char *line;
+    const char prompt[] = "> ";
 
-  pfstring("uLisp ", pserial);
-  print_version();
+    /* Set the completion callback. This will be called every time the
+     * user uses the <tab> key. */
+    // bestlineSetCompletionCallback(repl_completion);
+    // bestlineSetHintsCallback(repl_hints);
 
-  const char prompt[] = "> ";
+    /* Load history from file. The history file is just a plain text file
+     * where entries are separated by newlines. */
+    // bestlineHistoryLoad("history.txt"); /* Load the history at startup */
 
-  char* line;
-  while((line = linenoise(prompt)) != NULL) {
+    /* Now this is the main loop of the typical bestline-based application.
+     * The call to bestline() will block as long as the user types something
+     * and presses enter.
+     *
+     * The typed string is returned as a malloc() allocated string by
+     * bestline, so the user needs to free() it. */
 
-    // TODO: If there are unclosed parentheses, enter multi-line
+    setup();
+    pfstring("uLisp ", pserial);
+    print_version();
 
-    linenoiseHistoryAdd(line);
-    evaluate(line);
-    // linenoiseClearScreen(void);
+    while ((line = bestline(prompt)) != NULL) {
+        if (line[0] != '\0' && line[0] != '/') {
+            // fputs("echo: '", stdout);
+            // fputs(line, stdout);
+            // fputs("'\n", stdout);
+            bestlineHistoryAdd(line); /* Add to the history. */
+            // bestlineHistorySave("history.txt"); /* Save the history on disk. */
 
-    linenoiseFree(line);
-  }
+            evaluate(line);
+
+        // } else if (!strncmp(line, "/mask", 5)) {
+        //     bestlineMaskModeEnable();
+        // } else if (!strncmp(line, "/unmask", 7)) {
+        //     bestlineMaskModeDisable();
+        // } else if (!strncmp(line, "/balance", 8)) {
+        //     bestlineBalanceMode(1);
+        // } else if (!strncmp(line, "/unbalance", 10)) {
+        //     bestlineBalanceMode(0);
+        // } else if (line[0] == '/') {
+        //     fputs("Unrecognized command: '", stdout);
+        //     fputs(line, stdout);
+        //     fputs("'\n", stdout);
+        }
+        free(line);
+    }
+    return 0;
 }
 #endif
 #endif
