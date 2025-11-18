@@ -18,7 +18,7 @@ Early stage but the basics are working.
 
 Based on [uLisp builder](https://github.com/technoblogy/ulisp-builder), [uLisp ESP32](https://github.com/technoblogy/ulisp-esp), [BL602 RISC-V fork](https://github.com/lupyuen/ulisp-bl602)
 
-- [x] Rewrite and upgrade from uLisp 3.6 to 4.6b, 4.7, 4.8d
+- [x] Rewrite and upgrade from uLisp 3.6 to 4.6b, 4.7, 4.8d~f
 - [x] Load code and step through each instruction
 - [ ] Replace devices with host events for emulation
   - [ ] Analog port read/write
