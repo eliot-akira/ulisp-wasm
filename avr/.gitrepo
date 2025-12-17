@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/technoblogy/ulisp
 	branch = master
-	commit = 8a2a00b87d0b93631f88f02e8b520c600f3a88be
-	parent = 8c46df405e3746f46283c316caff79a73f1d03c4
+	commit = 1724f845950c3efda88e2df0c5c3f0cfc22ddd89
+	parent = d4dad3ec1cda0404c1fe87f6237d7df338f79793
 	method = merge
 	cmdver = 0.4.6
