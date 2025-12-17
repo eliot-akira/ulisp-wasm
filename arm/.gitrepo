@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/technoblogy/ulisp-arm
 	branch = master
-	commit = ba7dd01bc26ce738ecec4bf99388e22d8f47daae
-	parent = 27607cc8878acb42d8964dc36bcba446a1b50a4a
+	commit = 03d734e22feaaac41c869f1f6deb1d47bb5cac87
+	parent = 5759c2e9fd092c9f36cb60f1f7840786603c9b28
 	method = merge
 	cmdver = 0.4.6
