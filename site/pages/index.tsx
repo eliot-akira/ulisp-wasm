@@ -271,7 +271,7 @@ export default function Page() {
             <section className="my-4 border border-slate-300">
               <div className="py-2 px-4 bg-slate-100 border-b border-slate-300 flex flex-row items-center">
                 <h4 className="flex-grow">Editor</h4>
-                <div className="text-xs text-slate-800 flex items-center gap-2">
+{/*                <div className="text-xs text-slate-800 flex items-center gap-2">
                   <label htmlFor="parinfer-mode">Edit mode</label>
                   <select
                     id="parinfer-mode"
@@ -296,6 +296,7 @@ export default function Page() {
                     <option value="off">Off</option>
                   </select>
                 </div>
+*/}            
               </div>
               <div className="my-1 mx-1" ref={editorRef}></div>
             </section>
